@@ -18,11 +18,13 @@ public:
 		
 	CParallelEulerIntegrator(CSimulation * sim_);
 		 
-	~CParallelEulerIntegrator(){};
+	~CParallelEulerIntegrator();
 	
 	void Integrate();
 		 
 private:
+
+	void ClearLinkedLists();
 	
 	void CreateCellLinkedLists(
 		CCell ** cll_,
@@ -99,9 +101,9 @@ private:
 		boost::function<double (double,bool, CSimulation *)> func_
 		);																				// Calculates the reflected vortex-vortex interation
 
-	int what_icell(const CParticle &a_) const;
+	int what_icell(std::list<CParticle>::iterator a_) const;
 	
-	int what_jcell(const CParticle &a_) const;
+	int what_jcell(std::list<CParticle>::iterator a_) const;
 	
 	double LindemanTS() const;
 	
@@ -206,6 +208,12 @@ private:
 	
 	double & temp;
 	
+	
+	CCell** cll;
+	CCell** cllp;
+	CCell** clldis;
+	CCell** lastcll;
+
 	
 	
 };

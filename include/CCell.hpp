@@ -45,6 +45,8 @@ class CCell
 		return *this;
 	};
 	
+	void clearlist() { cellList.clear(); };
+	
 };
 
 

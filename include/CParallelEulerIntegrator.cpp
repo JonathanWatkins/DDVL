@@ -10,11 +10,12 @@
 #include <boost/random/normal_distribution.hpp>
 
 // force prototypes
-double BesselsForce(double dist_, bool inbath_, CSimulation *sim_);
-double BessLogForce(double dist_, bool inbath_, CSimulation *sim_);
-double GaussianForce(double dist_, bool inbath_, CSimulation *sim_);
-double GaussianPinForce(double dist_, bool inbath_, CSimulation *sim_);
-double LJForce(double dist_, bool inbath_, CSimulation *sim_);
+
+double BesselsForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
+double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
+double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
+double GaussianPinForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
+double LJForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
 
 
 template<class T>
@@ -97,12 +98,47 @@ av_force_t(sim_->av_force_t)
 	f0_rcut_correction = temp_f0_rcut_correction;
 	f0bath_rcut_correction = temp_f0bath_rcut_correction;
 	
-	//std::cout << "   f0 rcut correction: " << f0_rcut_correction << std::endl;
-	//std::cout << "   f0bath rcut correction: " << f0bath_rcut_correction << std::endl;
+	// cell-linked lists on heap
 	
-	//std::cout << "   LJ test: " << LJForce(1,false,this) << std::endl;
+	cll = new CCell*[MAXLINKEDLISTSIZE];
+	cllp = new CCell*[MAXLINKEDLISTSIZE];
+	clldis = new CCell*[MAXLINKEDLISTSIZE];
+	lastcll = new CCell*[MAXLINKEDLISTSIZE];
+	
+	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
+	{
+		cll[i] = new CCell[MAXLINKEDLISTSIZE];
+		cllp[i] = new CCell[MAXLINKEDLISTSIZE];
+		clldis[i] = new CCell[MAXLINKEDLISTSIZE];
+		lastcll[i] = new CCell[MAXLINKEDLISTSIZE];
+		
+	};
+	
+	// These cll do not change during the simulation
+	CreateCellLinkedLists(cllp, pinsList);
+	CreateCellLinkedLists(clldis, disorderList);
   
 }
+
+
+CParallelEulerIntegrator::~CParallelEulerIntegrator()
+{
+	// Clean up cll, cllp, lastcll, lastcllp
+	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
+	{
+    delete [] cll[i];
+    delete [] cllp[i];
+    delete [] lastcll[i];
+    delete [] clldis[i];
+    
+	}
+	delete [] cll;
+	delete [] cllp;
+	delete [] lastcll;
+	delete [] clldis;
+	
+	
+};
 
 void CParallelEulerIntegrator::Integrate()
 {
@@ -116,33 +152,13 @@ void CParallelEulerIntegrator::Integrate()
 	if (geometry==tube) Utilities::wrapVortices(lastvorticesList, sim->get_channelWidth(), sim->get_forceRange());
 	if (geometry==periodic) Utilities::wrapVorticesPeriodic(lastvorticesList, sim->get_channelLength(), sim->get_channelWidth(), sim->get_forceRange());
 		
-	// cell-linked lists on heap
-	
-	CCell** cll = new CCell*[MAXLINKEDLISTSIZE];
-	CCell** cllp = new CCell*[MAXLINKEDLISTSIZE];
-	CCell** clldis = new CCell*[MAXLINKEDLISTSIZE];
-	CCell** lastcll = new CCell*[MAXLINKEDLISTSIZE];
-	CCell** nextcll = new CCell*[MAXLINKEDLISTSIZE];
-	
-	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
-	{
-		cll[i] = new CCell[MAXLINKEDLISTSIZE];
-		cllp[i] = new CCell[MAXLINKEDLISTSIZE];
-		clldis[i] = new CCell[MAXLINKEDLISTSIZE];
-		lastcll[i] = new CCell[MAXLINKEDLISTSIZE];
-		nextcll[i] = new CCell[MAXLINKEDLISTSIZE];
-		
-	}
-		
-		
 	// divide the vorticesList and lastvorticesList into cells
 	
 	CreateCellLinkedLists(cll, vorticesList);
 	
 	CreateCellLinkedLists(lastcll, lastvorticesList);
 	
-	CreateCellLinkedLists(cllp, pinsList);
-	CreateCellLinkedLists(clldis, disorderList);
+	
 	
 	// loop over all cll comparing with lastcll and cllp lists
 	
@@ -284,21 +300,7 @@ void CParallelEulerIntegrator::Integrate()
 					
 					CheckDouble(p->get_x(),"x","calculateForces()");
 					CheckDouble(p->get_y(),"y","calculateForces()"); 
-					
-					// set force 
-					//p->set_force(force[0],force[1]);
-					
-					// calculate dx2
-					//M2+=tempForce[0]*tempForce[0];
-					//M2Full+=p->get_velx()*dt*p->get_velx()*dt;
-					
-					// Set particles local stress
-					
-					p->set_Jyy(JyyK+JyyV);
-					p->set_Jxx(JxxK+JxxV);
-					p->set_Jxy(JxyK+JxyV);
-					p->set_Jyx(JyxK+JyxV);
-					
+												
 					
 				}
 			
@@ -307,13 +309,12 @@ void CParallelEulerIntegrator::Integrate()
 	}
 	
 	// check for duplicate positions
-	//CopyCellLinkedList(cll, nextcll);
-	
 	CheckDuplicatePositions(cll);
 	
 	// updates vortices list
 	vorticesList.clear();
 	CellLinkedListToList(cll,vorticesList);
+	ClearLinkedLists();
 	
 	// Update moments
 	/*if ("Anderson"==thermostat)
@@ -362,21 +363,7 @@ void CParallelEulerIntegrator::Integrate()
 	M2FullSum+=M2Full/vorticesList.size()/dt;	
 		
 		
-	// Clean up cll, cllp, lastcll, lastcllp
-	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
-	{
-    delete [] cll[i];
-    delete [] cllp[i];
-    delete [] lastcll[i];
-    delete [] clldis[i];
-    delete [] nextcll[i];
-    
-	}
-	delete [] cll;
-	delete [] cllp;
-	delete [] lastcll;
-	delete [] clldis;
-	delete [] nextcll;
+	
 	
 	
 }
@@ -389,7 +376,7 @@ void CParallelEulerIntegrator::Integrate()
 //
 //*************************************************************************************************************
 
-double BessLogForce(double dist_, bool inbath_, CSimulation *sim_)
+double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double force=0;
 	
@@ -428,7 +415,7 @@ double BessLogForce(double dist_, bool inbath_, CSimulation *sim_)
 //
 //*************************************************************************************************************
 
-double BesselsForce(double dist_, bool inbath_, CSimulation *sim_)
+double BesselsForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double force=0;
 	// if in bath thislambda and thisf0 should be set to the stiff values
@@ -457,7 +444,7 @@ double BesselsForce(double dist_, bool inbath_, CSimulation *sim_)
 	return force;
 }
 
-double GaussianForce(double dist_, bool inbath_, CSimulation *sim_)
+double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double Av = sim_->get_Av();
 	double Rv = sim_->get_Rv();
@@ -465,7 +452,7 @@ double GaussianForce(double dist_, bool inbath_, CSimulation *sim_)
 					
 }
 
-double GaussianPinForce(double dist_, bool inbath_, CSimulation *sim_)
+double GaussianPinForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double disorderRange = sim_->get_disorderRange();
 	double disorderStrength = sim_->get_disorderStrength();
@@ -473,7 +460,7 @@ double GaussianPinForce(double dist_, bool inbath_, CSimulation *sim_)
 					
 }
 
-double LJForce(double dist_, bool inbath_, CSimulation *sim_)
+double LJForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double sigma = sim_->get_sigma();
 	double epsilon = sim_->get_epsilon();
@@ -494,7 +481,7 @@ void CParallelEulerIntegrator::CreateCellLinkedLists( CCell ** cll_, std::list<C
 			q != list_.end(); q++)
 	{
 		
-		cll_[what_icell(*q)][what_jcell(*q)].add_particle(*q); 
+		cll_[what_icell(q)][what_jcell(q)].add_particle(*q); 
 		//if (what_icell(*q)==2 && what_jcell(*q)==2) std::cout << q->get_x() << ", " << q->get_y() << std::endl;	
 	
 	}
@@ -550,14 +537,14 @@ void CParallelEulerIntegrator::vvInteration(
 		// do not check interaction between particle and itself
 		if (q->get_id()==p_->get_id())
 				continue;
-		
+		double pxqx = p_->get_x()-q->get_x();
+		double pyqy = p_->get_y()-q->get_y();
+		 
 		// r is the distance between points
 		// rvector is the direction from q to p
 		// r hat is the unit vector pointing from q to p
 		
-		double r= sqrt((double)
-					(p_->get_x()-q->get_x())*(p_->get_x()-q->get_x())
-				+ (p_->get_y()-q->get_y())*(p_->get_y()-q->get_y()));
+		double r= sqrt( pxqx*pxqx + pyqy*pyqy );
 		
 		// check r is a valid number
 		if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
@@ -569,12 +556,12 @@ void CParallelEulerIntegrator::vvInteration(
 				continue;
 		
 		// calculate rhat
-		double rvector[2]={p_->get_x()-q->get_x(),p_->get_y()-q->get_y()};
-		double modr=sqrt((double)rvector[0]*rvector[0]+rvector[1]*rvector[1]);									
-		if (modr==0)
+		double rvector[2]={pxqx,pyqy};
+		
+		if (r==0)
 			continue;
 			
-		double rhat[2] ={rvector[0]/modr,rvector[1]/modr};
+		double rhat[2] ={rvector[0]/r,rvector[1]/r};
 		
 		
 		double f=func_(r,inbath_,sim);
@@ -583,17 +570,15 @@ void CParallelEulerIntegrator::vvInteration(
 		forceSum[0]=forceSum[0]+f*rhat[0];
 		forceSum[1]=forceSum[1]+f*rhat[1];
 						
-		JyyV_+=0.5*(p_->get_y()-q->get_y())*f*rhat[1];
-		JxxV_+=0.5*(p_->get_x()-q->get_x())*f*rhat[0];
-		JxyV_+=0.5*(p_->get_y()-q->get_y())*f*rhat[0];
-		JxyV_+=0.5*(p_->get_x()-q->get_x())*f*rhat[1];
-		
 	}
 	
 	force_[0]=force_[0]+forceSum[0];
 	force_[1]=force_[1]+forceSum[1];
-		
+	
+	
+	
 }
+
 
 
 //*************************************************************************************************************
@@ -645,37 +630,47 @@ void CParallelEulerIntegrator::CellLinkedListToList(CCell** cll_,std::list<CPart
 }
 
 
-int CParallelEulerIntegrator::what_icell(const CParticle & a_) const
+
+int CParallelEulerIntegrator::what_icell(std::list<CParticle>::iterator a_) const
 {
-	double i= floor((a_.get_x()-sim->get_firstPin().get_x()+2*cellSize)/cellSize);
+	double i= floor((a_->get_x()-sim->get_firstPin().get_x()+2*cellSize)/cellSize);
 	//std::cout << i << std::endl;
-	std::stringstream oss;
-	oss << "what_icell(): i is undefined p->get_x()= " << a_.get_x();
-	if (i!=i) throw std::runtime_error(oss.str());
-	oss.str("");
+	if (i!=i)
+	{
+		std::stringstream oss;
+		oss << "what_icell(): i is undefined p->get_x()= " << a_->get_x();
+		throw std::runtime_error(oss.str());
+	}
 	if (i<0)
 	{
-		 oss << "what_icell(): (i<0) particle outside link list grid (" << a_.get_x() << ", " << a_.get_y() << ")" << std::endl; 
-	
-		 throw std::runtime_error(oss.str());
+		std::stringstream oss;
+		oss << "what_icell(): (i<0) particle outside link list grid (" << a_->get_x() << ", " << a_->get_y() << ")" << std::endl; 
+		throw std::runtime_error(oss.str());
 	}
 	if (i>MAXLINKEDLISTSIZE-1)
 	{
-		 oss << "what_icell(): (i>MAXLINKEDLISTSIZE-1) particle outside link list grid (" << a_.get_x() << ", " << a_.get_y() << ")" << std::endl; 
-		 throw std::runtime_error(oss.str());
+		std::stringstream oss;
+		oss << "what_icell(): (i>MAXLINKEDLISTSIZE-1) particle outside link list grid (" << a_->get_x() << ", " << a_->get_y() << ")" << std::endl; 
+		throw std::runtime_error(oss.str());
 	}
+	
 	else return i;
 
 }
 
-int CParallelEulerIntegrator::what_jcell(const CParticle & a_) const
+int CParallelEulerIntegrator::what_jcell(std::list<CParticle>::iterator a_) const
 {
-	double j= floor((a_.get_y()-sim->get_firstPin().get_y()+2*cellSize)/cellSize);
-	std::stringstream oss;
-	oss << "what_icell(): j is undefined p->get_x()= " << a_.get_x();
-	if (j!=j) throw std::runtime_error(oss.str());
+	double j= floor((a_->get_y()-sim->get_firstPin().get_y()+2*cellSize)/cellSize);
+	if (j!=j)
+	{
+		std::stringstream oss;
+		oss << "what_icell(): j is undefined p->get_x()= " << a_->get_x();
+		throw std::runtime_error(oss.str());
+	}
 	if (j<0) throw std::runtime_error("what_jcell(): (j<0) particle outside link list grid");
+	
 	if (j>MAXLINKEDLISTSIZE-1) throw std::runtime_error("what_jcell(): (j>MAXLINKEDLISTSIZE-1) particle outside link list grid");
+	
 	else return j;
 
 }
@@ -921,13 +916,22 @@ void CParallelEulerIntegrator::ApplyBounceBackConditions(std::list<CParticle>::i
 //
 //*************************************************************************************************************
 
+
 void CParallelEulerIntegrator::CheckDouble(double num_, std::string varname_, std::string source_)
 {
-	std::stringstream oss;
-	oss << "CheckValidity() called from " << source_ << " : " << varname_ << " " << num_; 
-	if (num_!=num_) throw std::runtime_error(oss.str());
-	if (boost::math::isinf(num_)) throw std::runtime_error(oss.str());
-					
+	if (num_!=num_)
+	{
+		std::stringstream oss;
+		oss << "CheckValidity() called from " << source_ << " : " << varname_ << " " << num_; 
+		throw std::runtime_error(oss.str());
+	}
+	
+	if (boost::math::isinf(num_))
+	{
+		std::stringstream oss;
+		oss << "CheckValidity() called from " << source_ << " : " << varname_ << " " << num_; 
+		throw std::runtime_error(oss.str());
+	}		
 }
 
 //*************************************************************************************************************
@@ -1016,24 +1020,24 @@ void CParallelEulerIntegrator::rvvInteration(
 	
 	if (p_->get_x() > forceRange)
 		return;
+
 		
 	double forceSum[2]={0,0};
 	
 	for(std::list<CParticle>::iterator q = cell_.begin();
 									q != cell_.end(); ++q)
 	{
-		
-		// do not check interaction between particle and itself
 		if (q->get_id()==p_->get_id())
 				continue;
+				
+		double pxqx = p_->get_x()-(wall_position_-q->get_x());
+		double pyqy = p_->get_y()-q->get_y();
 		
 		// r is the distance between points
 		// rvector is the direction from q to p
 		// r hat is the unit vector pointing from q to p
 		
-		double r= sqrt((double)
-					(p_->get_x()-(wall_position_-q->get_x()))*(p_->get_x()-(wall_position_-q->get_x()))
-				+ (p_->get_y()-q->get_y())*(p_->get_y()-q->get_y()));
+		double r= sqrt( pxqx*pxqx + pyqy*pyqy );
 		
 		// check r is a valid number
 		if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
@@ -1045,12 +1049,12 @@ void CParallelEulerIntegrator::rvvInteration(
 				continue;
 		
 		// calculate rhat
-		double rvector[2]={p_->get_x()-(wall_position_-q->get_x()),p_->get_y()-q->get_y()};
-		double modr=sqrt((double)rvector[0]*rvector[0]+rvector[1]*rvector[1]);									
-		if (modr==0)
+		double rvector[2]={pxqx,pyqy};
+		
+		if (r==0)
 			continue;
 			
-		double rhat[2] ={rvector[0]/modr,rvector[1]/modr};
+		double rhat[2] ={rvector[0]/r,rvector[1]/r};
 		
 		
 		double f=func_(r,inbath_,sim);
@@ -1058,12 +1062,7 @@ void CParallelEulerIntegrator::rvvInteration(
 		
 		forceSum[0]=forceSum[0]+f*rhat[0];
 		forceSum[1]=forceSum[1]+f*rhat[1];
-						
-		JyyV_+=0.5*(p_->get_y()-q->get_y())*f*rhat[1];
-		JxxV_+=0.5*(p_->get_x()-(wall_position_-q->get_x()))*f*rhat[0];
-		JxyV_+=0.5*(p_->get_y()-q->get_y())*f*rhat[0];
-		JxyV_+=0.5*(p_->get_x()-(wall_position_-q->get_x()))*f*rhat[1];
-		
+							
 	}
 	
 	force_[0]=force_[0]+forceSum[0];
@@ -1073,4 +1072,18 @@ void CParallelEulerIntegrator::rvvInteration(
 	
 }
 
+
+void CParallelEulerIntegrator::ClearLinkedLists()
+{
+	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
+	{
+		for(int j = 0; j < MAXLINKEDLISTSIZE; ++j)
+		{
+			cll[i][j].clearlist();
+			lastcll[i][j].clearlist();
+		}
+	}
+	
+	
+}
 

@@ -83,7 +83,7 @@ void CFileOutput::addFileStream(std::string streamName_, std::string fileName_)
 	
 	newFile[filecount].open(oss.str().c_str());
 	newFile[filecount].precision(5);
-	newFile[filecount].setf( std::ios::scientific, std:: ios::floatfield );	
+	//newFile[filecount].setf( std::ios::scientific, std:: ios::floatfield );	
 	
 	fsptr[filecount]=&newFile[filecount];
 	

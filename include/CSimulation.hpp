@@ -89,7 +89,6 @@ private:
 	// initial simulation parameters
 	
 	int simulation_time;
-	int relax_time;
 	int MonitorPeriod;
 	int lasttime;
 	int seedtime;
@@ -310,19 +309,13 @@ public:
 	
 	
 	// initilise from Job Header
-	int initialise(std::string jobBatchFileLocation_);
+	int Initialise(std::string jobBatchFileLocation_);
 	
-	//initialisation for read job
-	int initialiseRead(int runtype_, int starting_time_step_, bool triangulateReadRun_,  std::string jobnum_);
+	void Run();
 	
-	// Initialise any common variables
-	int initialiseGlobal(); 
+	void DoStep();
 	
-	void run();
-	
-	void do_step();
-	
-	void clean_up();
+	void OutputSimulationTimes();
 	
 	// getters in header file
 	
@@ -516,8 +509,6 @@ public:
 	
 	bool get_drawSixFold() const;
 	
-	std::string get_thermostat() const;
-	
 	bool get_draw() const; // returns true is draw this step. 
 	
 	void pause_simulation();
@@ -536,41 +527,20 @@ public:
 	
 	void pan_right();
 	
-	double get_removesourcey0() const; 								// Returns the value of removesourcey0
-
-	double get_removesourcey1() const;								// Returns the value of removesourcey1
-
-	double get_removewedgex0() const; 
-	
-	double get_removewedgey0() const;
-	
-	double get_removewedgex1() const;
-	
-	double get_removewedgey1() const;
-	
-	double get_removewedgey2() const;
-
-	double get_reboundy0() const; 										// Returns the value of reboundy0
-
-	double get_reboundy1() const;											// Returns the value of reboundy1
-
-	double get_reboundx0() const; 										// Returns the value of reboundx0
-
-	double get_reboundx1() const;											// Returns the value of reboundx1
-
-
 	void calcBfield();
 
 private:
 
 	//int loop();
 	
+	void OutputResults();
+	
 	void calculateForces_old();
 	
 	void check_for_start();
 
 	void check_for_end();
-	
+
 	void initialise_files();
 	
 	void initialisePins();
@@ -597,7 +567,7 @@ private:
 	
 	void calculateAvVel();
 	
-	void outputFinalVortexPositions();
+	void OutputFinalVortexPositions();
 	
 	void read_PinsList();
 	

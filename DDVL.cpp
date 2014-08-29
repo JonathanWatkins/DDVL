@@ -32,12 +32,12 @@ int main(int argc, char *argv[])
 		 	else
 		 	{ 
 				std::string	jobBatchFileLocation = argv[1];
-				sim.initialise(jobBatchFileLocation);
+				sim.Initialise(jobBatchFileLocation);
 			}
 		}
 			
 			
-		sim.run();	
+		sim.Run();	
 			
 		
 	}

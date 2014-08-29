@@ -65,9 +65,8 @@ CSimulation::CSimulation()
 	lasttime=time(0);
 	srand ( seedtime );
 	running = false;
-	initialise=false;
+	initialised=false;
 	simulation_time=1;
-	relax_time=1;
 	simulation_initialised = false;
 	paused=false;
 	M2=0;
@@ -101,18 +100,6 @@ CSimulation::CSimulation()
 	triangulateReadRun=true;
 	calcTrajectories=false;
 	showParticleTracker=false;
-	make_bubble=false;
-	bubble_center_x=0;
-	bubble_center_y=0;
-	bubble_radius=0;
-	calculate_burgers_vector=false;
-	burgers_circuit_center_x=0;
-	burgers_circuit_center_y=0;
-	burgers_circuit_width=0;
-	burgers_circuit_length=0;
-	burgers_circuit_tracked=false;
-	current_burgers_circuit_center_x = 0;
-	current_burgers_circuit_center_y = 0;
 	Ap=1;
 	DTcount=0;
 	fcount=0;
@@ -181,28 +168,36 @@ CSimulation::CSimulation()
 
 }
 
-void CSimulation:run()
+void CSimulation::Run()
 {
 	if (initialised==false)
 	{
 		throw std::runtime_error("Simulation not initialised.");
 	}
 	
+	std::cout << "Simulation running ..." << std::endl; 
+	std::cout << "-------------------------------------------------" << std::endl << std::endl;
+	
 	for (t=1; t<=simulation_time; ++t)
 	{
 		
-		do_step();
+		DoStep();
+		OutputVortexPositions();
 		
 	}
+	std::cout << std::endl;
+	std::cout << "-------------------------------------------------" << std::endl;
+	std::cout << "Simulation finished." << std::endl << std::endl; 
 	
-	output_results();
-	clean_up();
+	OutputFinalVortexPositions();
+	OutputPinsList();
+	OutputSimulationTimes();
 
 }
 
-void CSimulation::do_step()
+void CSimulation::DoStep()
 {
-	if (0==t%10) std::cout << "t: " << t << std::endl;
+	if (0==t%100) std::cout << "t: " << t << std::endl;
 	
 	calculateFinishTime();
 	
@@ -229,7 +224,7 @@ void CSimulation::do_step()
 	
 }
 
-int CSimulation::initialise(std::string jobBatchFileLocation_)
+int CSimulation::Initialise(std::string jobBatchFileLocation_)
 {
 	
 	jobBatchFileLocation=jobBatchFileLocation_;
@@ -302,7 +297,7 @@ void CSimulation::initialise_files()
 	{
 		fileOutputter.addFileStream("guiheader", "jobheader.ini");
 		fileOutputter.addFileStream("posfile", "posdata.txt");
-		fileOutputter.addFileStream("guifile", "guidata.txt");
+		fileOutputter.addFileStream("guifile", "guidata.dat");
 		fileOutputter.addFileStream("trajfile", "trajectories.txt");
 		fileOutputter.addFileStream("framevel", "framevel.txt");
 		fileOutputter.addFileStream("CoM", "CoM.txt");
@@ -316,7 +311,7 @@ void CSimulation::initialise_files()
 	std::cout << "   Files initialised.\n\n";
 }
 
-void CSimulation::clean_up()
+void CSimulation::OutputSimulationTimes()
 {
 
 	endTime = clock();
@@ -1720,7 +1715,6 @@ void CSimulation::calculateAvVel()
 	
 	avXVel=avXVel+spaceSumX/(double)count;
 	avYVel=avYVel+spaceSumY/(double)count;
-	if (t<relax_time) return;
 	if (outputType==1 || outputType==2) *fileOutputter.getFS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << get_tAvSAvVelX() << " " << get_tAvSAvVelY() << std::endl;
 	
 	
@@ -1812,7 +1806,7 @@ void CSimulation::removeEscapedVorticesPeriodic()
 	}
 }
 
-void CSimulation::outputFinalVortexPositions()
+void CSimulation::OutputFinalVortexPositions()
 {
 	// At the end of the simulation, output vortex positions
 	if (t==simulation_time)
@@ -2097,9 +2091,8 @@ void CSimulation::OutputVortexPositions()
 {
 	// output position data
 	
-	if (t<relax_time) return;
 	
-	if (t%triangulationInterval==0 && t%framedataInterval==0)
+	/*if (t%triangulationInterval==0 && t%framedataInterval==0)
 	{
 		
 		
@@ -2127,6 +2120,57 @@ void CSimulation::OutputVortexPositions()
 		}
 	}
 	else *fileOutputter.getFS("guifile") << "   " <<  "timestep: " << t << "   NumVortices: 0" << std::endl;
+
+	*/
+	
+	
+	if (t==1) *fileOutputter.getFS("guifile") << "# This file contains frame data\n"
+																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+	
+	if (t%triangulationInterval!=0 || t%framedataInterval!=0) return;
+	
+	// counts number of active particles
+	int numVortices=0;
+	for (std::list<CParticle>::iterator p = delVortexList.begin();
+		p != delVortexList.end(); ++p)
+	{
+		if (p->get_ghost()!=true)
+		{
+			numVortices++;
+		}				 
+	}
+	
+	
+	*fileOutputter.getFS("guifile") << "{" << t << ", " << numVortices << ", ";
+	
+	
+	bool first=true;
+	for (std::list<CParticle>::iterator p = delVortexList.begin();
+			p != delVortexList.end(); ++p)
+	{
+		
+		if (p->get_ghost()==true) continue;
+
+		
+		if (first==false)
+		{  
+			*fileOutputter.getFS("guifile") << ", ";
+		}
+
+		first = false;
+		*fileOutputter.getFS("guifile") << "{"
+						 << p->get_id() << ", " 
+						 << p->get_x() << ", " 
+						 << p->get_y() << ", " 
+						 << p->get_velx() << ", "
+						 << p->get_vely() << ", "
+						 << p->get_coord_num()
+						 << "}";											
+
+			
+	}
+	
+	*fileOutputter.getFS("guifile") << "}" << std::endl;
 }
 
 //*************************************************************************************************************
@@ -2179,7 +2223,6 @@ void CSimulation::UpdateTrajectories()
 
 void CSimulation::OutputTrajectory(std::list<CParticle>::iterator p_)
 {
-	if (t<relax_time) return;
 	
 	if (outputType==0)
 			return;
@@ -2333,7 +2376,7 @@ bool CSimulation::AddParticleToBath(std::string location_)
 		{
 			
 			
-			if (geometry==channel || geometry==tube || geometry==BSCCO)
+			if (geometry==channel || geometry==tube)
 			{
 				CParticle newVortex;
 				
@@ -2345,23 +2388,6 @@ bool CSimulation::AddParticleToBath(std::string location_)
 				newVortex.set_TrajectoryNumber(NextTrajectory());
 				vorticesList.push_back(newVortex);
 			}
-			else if (geometry==wedge)
-			{
-				CParticle newVortex;
-			
-				double xval = etchwedgex0+(etchwedgex1-etchwedgex0)*(rand() % 1000)/1000.0;
-				double yrange=2*xval*tan(etchwedgeangle);
-				double yval = bathWidth/2.0-xval*tan(etchwedgeangle)+yrange*(rand() % 1000)/1000.0;
-				xval = xval + a0;
-				newVortex.set_pos
-						( xval,yval);
-				newVortex.set_TrajectoryNumber(NextTrajectory());
-				vorticesList.push_back(newVortex);
-			}
-			else if (geometry==periodic)
-			{
-				// do nothing
-			}
 			else throw std::runtime_error ("AddParticleToBath() not valid geometry");
 			
 			//output newVortex added data
@@ -2371,7 +2397,7 @@ bool CSimulation::AddParticleToBath(std::string location_)
 		{
 			
 			
-			if (geometry==channel || geometry==tube || geometry==wedge || geometry==BSCCO)
+			if (geometry==channel || geometry==tube)
 			{
 				CParticle newVortex;
 				
@@ -2386,10 +2412,6 @@ bool CSimulation::AddParticleToBath(std::string location_)
 				newVortex.set_TrajectoryNumber(NextTrajectory());
 				vorticesList.push_back(newVortex);
 
-			}
-			else if (geometry==periodic)
-			{
-				// do nothing
 			}
 			else throw std::runtime_error ("AddParticleToBath() not valid geometry");
 			
@@ -2569,3 +2591,8 @@ void CSimulation::initialisePinsPeriodic()
 	std::cout << "   done initialising pins file." << std::endl;
 }
 
+
+void CSimulation::OutputResults()
+{
+	
+}
