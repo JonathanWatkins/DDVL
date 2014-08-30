@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=LINUX)
 	set(CMAKE_CXX_COMPILER "mpicc")
-	
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
 ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=NOTLINUX)
 	set(CMAKE_CXX_COMPILER "icl")
@@ -44,7 +44,7 @@ include_directories(
 )
 
 add_library(DDVLlib include/CSimulation.cpp include/CParticle.cpp include/CSimulation.hpp include/CParticle.hpp include/CDelLine.hpp include/CDelTriangle.hpp include/CCoord.hpp include/CBin.hpp include/CPin.hpp include/CPin.cpp include/CCell.hpp include/CCell.cpp include/CLineIDs.hpp include/delaunay.hpp include/CFileOutput.hpp include/CFileOutput.cpp include/CParallelEulerIntegrator.hpp include/CParallelEulerIntegrator.cpp
-include/Utilities.hpp include/Utilities.cpp
+include/Utilities.hpp include/Utilities.cpp include/GeometryBase.cpp include/GeometryChannel.hpp
 )
 
 

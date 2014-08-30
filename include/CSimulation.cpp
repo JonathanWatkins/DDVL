@@ -16,6 +16,10 @@
 #include "CRunningStats.hpp"
 #include "delaunay.hpp"
 #include "Utilities.hpp"
+
+// GeometryBase Types
+#include "GeometryChannel.hpp"
+
 //#include "CParameter.hpp"
 
 // STL classes
@@ -139,6 +143,8 @@ CSimulation::CSimulation()
 	frame_force_t = 0;
 	frame_force_d = 0;
 	
+	geom = CreateGeometry();
+	
 	version.set_versionStr("1.0.0");	
 
 }
@@ -177,8 +183,9 @@ void CSimulation::DoStep()
 	calculateFinishTime();
 	
 		//std::cout << "a";
-	if (geometry==channel) removeEscapedVortices();
-	else if (geometry==tube) removeEscapedVorticesTube();
+	//if (geometry==channel) removeEscapedVortices();
+	//else if (geometry==tube) removeEscapedVorticesTube();
+	geom->RemoveEscapedVortices();	
 		
 	//std::cout << "b";
 	clock_t startclock = clock();
@@ -935,72 +942,10 @@ void CSimulation::initialiseVortices()
 	std::cout << "   " << "initialiseVortices() created " << vorticesList.size() << " vortices." << std::endl << std::endl;
 }
 
-void CSimulation::removeEscapedVortices()
-{
-  std::list<CParticle>::iterator p = vorticesList.begin();
- 
- 	while (p != vorticesList.end())
-	{
-		bool removed=false;
-		
-		if (p->get_x() <= removesourcex)
-		{
-			
-			OutputTrajectory(p);
-			
-			std::cout << "Removed(type1) at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-			
-		}
-		else if (p->get_y() <= removesourcey0)
-		{
-			
-			OutputTrajectory(p);
-			
-			std::cout << "Removed(type2) at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-		}
-		else if (p->get_x() >= removesinkx)
-		{
-			
-			OutputTrajectory(p);
-			
-			std::cout << "Removed at(type3) " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-			
-		} 
-		else if (p->get_y() >= removesourcey1)
-		{
-			
-			OutputTrajectory(p);
-			
-			std::cout << "Removed at(type4) " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-		} 
-		else if ( (p->get_x() >= removechannelx0 && p->get_x()<= removechannelx1) 
-				&& ( p->get_y() <= removetopchannely  || p->get_y() >= removebottomchannely ) )
-		{
-			OutputTrajectory(p);
-			
-			std::cout << "Channel Removed at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-			
-		} 
-		
-		if (removed==false) { ++p; }
-	
-	}
-}
+//void CSimulation::removeEscapedVortices()
+//{
+//  
+//}
 
 
 
@@ -1161,6 +1106,8 @@ void CSimulation::initialisePinsTube()
 
 }
 
+
+/*
 void CSimulation::removeEscapedVorticesTube()
 {
   
@@ -1210,7 +1157,7 @@ void CSimulation::removeEscapedVorticesTube()
 	
 	}
 }
-
+*/
 //********************************************************************************************
 // 
 //	Reads the job.bat file for a write job 
@@ -1716,7 +1663,7 @@ void CSimulation::initialiseVorticesPeriodic()
 	std::cout << "   " << "initialiseVorticesPeriodic() created " << vorticesList.size() << " vortices." << std::endl << std::endl;
 }
 
-void CSimulation::removeEscapedVorticesPeriodic()
+/*void CSimulation::removeEscapedVorticesPeriodic()
 {
   
   std::list<CParticle>::iterator p = vorticesList.begin();
@@ -1745,6 +1692,8 @@ void CSimulation::removeEscapedVorticesPeriodic()
 	
 	}
 }
+*/
+
 
 void CSimulation::OutputFinalVortexPositions()
 {
@@ -2516,3 +2465,21 @@ void CSimulation::OutputResults()
 {
 	
 }
+
+
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+//	CreateGeometry
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+GeometryBase * CSimulation::CreateGeometry()
+{
+    //char o_type = inp_->GetOtype();
+    
+    switch(geometry)
+    {
+        case 0:  return new GeometryChannel(*this);            break;
+        //case 1:  return new GeometryTube(*this);             break;
+        default:   throw std::runtime_error("CSimulation:CreateOption()  Bad character");
+    }
+}
+

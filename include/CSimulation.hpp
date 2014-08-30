@@ -25,6 +25,8 @@
 #include "CFileOutput.hpp"
 #include "CParallelEulerIntegrator.hpp"
 
+class GeometryBase;
+
 #define channel		 	0
 #define tube 				1
 #define periodic 		2
@@ -52,6 +54,8 @@ class CSimulation
 
 private:
 	
+	GeometryBase * geom;
+	
 	// This is the location of the batch file containing
 	// specific run options
 	std::string jobBatchFileLocation;
@@ -73,6 +77,7 @@ private:
 	std::vector<CParticle> burgers_circuit;
 	
 	CParallelEulerIntegrator* integrator;
+	
 	
 	// Object status
 	bool running;
@@ -487,11 +492,11 @@ private:
 	
 	void delaunayTriangulation(std::list<CParticle> vorticesList_);
 	
-	void removeEscapedVortices();
+	//void removeEscapedVortices();
 	
-	void removeEscapedVorticesTube(); 
+	//void removeEscapedVorticesTube(); 
 	
-	void removeEscapedVorticesPeriodic(); 
+	//void removeEscapedVorticesPeriodic(); 
 	
 	void calculateAvVel();
 	
@@ -556,6 +561,8 @@ private:
 	bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
 	
 	void StartDataCollection();
+	
+	GeometryBase * CreateGeometry();
 	
 };
 
