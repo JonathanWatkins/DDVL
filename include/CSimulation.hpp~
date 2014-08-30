@@ -122,7 +122,9 @@ private:
 
 	CParticle firstPin;
 	
-	
+	double etchsourcex0, etchsourcey0, etchsourcex1, etchsourcey1;
+	double etchchannelx0, etchchannely0, etchchannelx1, etchchannely1;
+	double etchsinkx0, etchsinky0, etchsinkx1, etchsinky1;
 	
 		
 	double reboundy0, reboundy1; 

@@ -17,12 +17,16 @@
 
 GeometryChannel::GeometryChannel(CSimulation & sim_)
 :   vorticesList(sim_.get_vorticesList())
-{
-
-
-
-
-}
+,   removesourcex(sim_.get_removesourcex())
+,   removesourcey0(sim_.get_removesourcey0())
+,   removesinkx(sim_.get_removesinkx())
+,   removesourcey1(sim_.get_removesourcey1())
+,   removechannelx0(sim_.get_removechannelx0())
+,   removechannelx1(sim_.get_removechannelx1())
+,   removetopchannely(sim_.get_removetopchannely())
+,   removebottomchannely(sim_.get_removebottomchannely())
+,   t( &(sim_.get_t()))
+{}
                 
 
 void GeometryChannel::RemoveEscapedVortices() const

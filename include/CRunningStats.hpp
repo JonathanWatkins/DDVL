@@ -4,6 +4,9 @@
 // B. P. Welford algorithm for numerically accurate running mean and variance.
 // Presented in Donald Knuth's Art of Computer Programming, Vol 2, page 232, 3rd edition
 
+#include <stdexcept>
+#include <cmath>
+
 class CRunningStats
 {
 	int k;

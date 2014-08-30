@@ -123,16 +123,8 @@ CSimulation::CSimulation()
 	bouncebackx1=0;
 	bouncebacky0=0;
 	bouncebacky1=0;
-	removewedgeangle=0;
-	removewedgex0=0;
-	removewedgey0=0;
-	removewedgex1=0;
-	removewedgey1=0;
-	removewedgey2=0;
-	etchwedgeangle=0;
-	etchwedgex1=0;
-	etchwedgex0=0;
-	etchwedgey0=0;
+	
+
 	Av=0;
 	Rv=0;
 	epsilon=0;
@@ -501,49 +493,6 @@ void CSimulation::iniwrite_jobheader()
 
 
 	*fileOutputter.getFS("guiheader") <<"[ConfigVariables]\n"
-	<< "channelOffset=" << channelOffset <<std::endl
-	<< "etchsourcex0="<< etchsourcex0 << std::endl
-	<< "etchsourcey0="<< etchsourcey0 << std::endl
-	<< "etchsourcex1="<< etchsourcex1 << std::endl
-	<< "etchsourcey1="<< etchsourcey1 << std::endl
-	
-	<< "etchsinkx0="<< etchsinkx0 << std::endl
-	<< "etchsinky0="<< etchsinky0 << std::endl
-	<< "etchsinkx1="<< etchsinkx1 << std::endl
-	<< "etchsinky1="<< etchsinky1 << std::endl
-	
-	<< "etchchannelx0="<< etchchannelx0 << std::endl
-	<< "etchchannely0="<< etchchannely0 << std::endl
-	<< "etchchannelx1="<< etchchannelx1 << std::endl
-	<< "etchchannely1="<< etchchannely1 << std::endl
-	
-	<< "removesourcex=" << removesourcex << std::endl
-	<< "removesinkx=" << removesinkx << std::endl
-	<< "removesourcey0=" << removesourcey0 << std::endl
-	<< "removesourcey1=" << removesourcey1 << std::endl
-	
-	<< "removechannelx0=" << removechannelx0 << std::endl
-	<< "removechannelx1=" << removechannelx1 << std::endl
-	
-	<< "removetopchannely=" << removetopchannely << std::endl
-	<< "removebottomchannely=" << removebottomchannely << std::endl
-	
-	<< "urectx0=" << urectx0 << std::endl
-	<< "urecty0=" << urecty0 << std::endl
-	<< "urectx1=" << urectx1 << std::endl
-	<< "urecty1=" << urecty1 << std::endl
-	
-	<< "bulkx0=" << bulkx0 << std::endl
-	<< "bulky0=" << bulky0 << std::endl
-	<< "bulkx1=" << bulkx1 << std::endl
-	<< "bulky1=" << bulky1 << std::endl
-	
-	<< "dislocationx0=" << dislocationx0 << std::endl
-	<< "dislocationy0=" << dislocationy0 << std::endl
-	<< "dislocationx1=" << dislocationx1 << std::endl
-	<< "dislocationy1=" << dislocationy1 << std::endl
-	
-	<< "numBins=" << numBins << std::endl
 	<< "f0=" << f0 << std::endl
 	
 	<< "sourceDensity=" << sourceDensity << std::endl
@@ -1384,10 +1333,6 @@ void CSimulation::configure_simulation()
 	bouncebacky0=channelOffset;
 	bouncebacky1=channelWidth + channelOffset;
 	
-	urectx0 = -binsize/2.0;
-	urecty0 = channelWidth/2.0-a0;
-	urectx1 = 2*bathLength+channelLength+binsize/2.0;
-	urecty1 = channelWidth/2.0+a0;
 	
 	
 	/* due to etch process any even channel width has the bottom row of pins at -b0.
@@ -1407,8 +1352,7 @@ void CSimulation::configure_simulation()
 	dislocationy0=0;//1.1*a0;
 	dislocationy1=channelWidth;//channelHeight-1.1*a0;
 	
-	// more analysis variables (requires urect...)
-	numBins = (int)ceil((urectx1-urectx0)/binsize);
+	
 		
 	// physics
 	
