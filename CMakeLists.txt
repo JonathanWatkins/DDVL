@@ -44,8 +44,8 @@ include_directories(
 )
 
 add_library(DDVLlib include/CSimulation.cpp include/CParticle.cpp include/CSimulation.hpp include/CParticle.hpp include/CDelLine.hpp include/CDelTriangle.hpp include/CCoord.hpp include/CBin.hpp include/CPin.hpp include/CPin.cpp include/CCell.hpp include/CCell.cpp include/CLineIDs.hpp include/delaunay.hpp include/CFileOutput.hpp include/CFileOutput.cpp include/CParallelEulerIntegrator.hpp include/CParallelEulerIntegrator.cpp
-include/Utilities.hpp include/Utilities.cpp include/GeometryBase.cpp
-include/GeometryChannel.cpp
+include/Utilities.hpp include/Utilities.cpp include/GeometryBase.cpp include/GeometryBase.hpp
+include/GeometryChannel.cpp include/GeometryChannel.hpp
 )
 
 

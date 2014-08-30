@@ -51,7 +51,7 @@ struct SMoves
 class CSimulation
 {
 	
-	friend class CParallelEulerIntegrator;	
+	friend class CParallelEulerIntegrator;
 
 private:
 	
@@ -115,42 +115,6 @@ private:
 	double bathLength;
 	double bathWidth;
 	
-	double systemLength;
-	double systemWidth;
-	
-	double channelOffset;
-
-	CParticle firstPin;
-	
-	
-	
-		
-	double reboundy0, reboundy1; 
-	double reboundx0, reboundx1; 
-	
-	double bouncebacky0, bouncebacky1; 
-	double bouncebackx0, bouncebackx1; 
-	
-	
-	double urectx0;
-	double urecty0;
-	double urectx1;
-	double urecty1;
-
-	double bulkx0;
-	double bulkx1;
-	double bulky0;
-	double bulky1;
-
-	double dislocationx0;
-	double dislocationx1;
-	double dislocationy0;
-	double dislocationy1;
-
-	int sourceDensity;
-	int sinkDensity;
-	int channelDensity;
-
 	// analyse variables
 	double binsize;
 	int numBins;
@@ -223,8 +187,6 @@ private:
 	
 	bool alt_pos_file;
 	bool alt_pins_file;
-	std::string alt_pos_file_name;
-	std::string alt_pins_file_name;
 	
 	std::string pos_file_name;		
 	std::string pins_file_name;
@@ -281,16 +243,6 @@ public:
 	
 	double get_cellSize() const { return cellSize; };
 	
-	double get_bouncebackx0() const { return bouncebackx0; };
-	
-	double get_bouncebacky0() const { return bouncebacky0; };
-	
-	double get_bouncebackx1() const { return bouncebackx1; };
-	
-	double get_bouncebacky1() const { return bouncebacky1; };
-	
-	bool get_applyBounceBack() const { return applyBounceBack; };	
-	
 	double get_forceRange() const { return forceRange; };
 	
 	double get_time() const { return dt*t; };
@@ -340,10 +292,6 @@ public:
 
 	double get_vortexSize() const { return vortexSize; }
 		
-	double get_systemLength() const { return systemLength; }
-
-	double get_systemWidth() const {	return systemWidth; }
-
 	double get_Av() const { return Av; }
 
 	double get_Rv() const { return Rv; }
@@ -362,12 +310,6 @@ public:
 
 	int get_simulation_time() { return simulation_time; }
 
-	CParticle get_firstPin() const {	return firstPin; }
-
-	bool is_running() const { return running; }
-
-	bool is_initialised() const { return simulation_initialised; }
-
 	std::string get_finishTimeStr() const { return finishTimeStr; }
 
 	int get_Nv() const { return Nv; }
@@ -377,8 +319,6 @@ public:
 	std::string get_normaliseSinkStr() const { return normaliseSinkStr; }
 
 	std::string get_BfieldStr() const { return BfieldStr; }
-
-	bool is_paused() const { return paused; }
 
 	double get_M2() const { return M2; }
 
@@ -398,10 +338,6 @@ public:
 	
 	double get_eta() const { return eta; }
 	
-	bool get_reflected_channel_ends() const { return reflected_channel_ends; }
-	
-	bool get_flat_channel_ends() const { return flat_channel_ends; }
-	
 	bool get_applyStiffBath() const { return applyStiffBath; }
 	
 	bool get_applyBathVelocities() const { return applyBathVelocities; }
@@ -416,103 +352,48 @@ public:
 	
 	double get_lorentzForce() const { return lorentzForce; }
 	
+	double get_sourceBfield() const { return sourceBfield; }
+	
+	double get_sinkBfield() const { return sinkBfield; }
+	
+	double get_Phi() const { return Phi; }
+	
+	
 	std::string get_thermostat() const { return thermostat; }
 	
-	double get_removesourcey0() const { return removesourcey0;	}
-
-	double get_removesourcey1() const { return removesourcey1;	}
-
-	double get_removewedgex0() const { return removewedgex0; }
-
-	double get_removewedgey0() const { return removewedgey0; }
-
-	double get_removewedgex1() const { return removewedgex1; }
-
-	double get_removewedgey1() const { return removewedgey1; }
-
-	double get_removewedgey2() const { return removewedgey2; }
-
-	double get_reboundy0() const { return reboundy0;	}
-
-	double get_reboundy1() const { return reboundy1;	}
-
-	double get_reboundx0() const {	return reboundx0;	}
-
-	double get_reboundx1() const {	return reboundx1;	}
+	std::string GetPosFileName() const {return pos_file_name; }
 	
-				
-	//
-	//		returns the time average so far of M2
-	//    calculated using tempSum[0]*tempSum[0] 
-	//
+	std::string GetPinsFileName() const {return pins_file_name; }
+		
 	double get_M2Average() const;
 	
-	//
-	//		returns the time average so far of M2
-	//    calculated using (vel_x*dt)^2 
-	//
 	double get_M2FullAverage() const;
 		
 	double get_tAvSAvVelX() const;
 		
 	double get_tAvSAvVelY() const;
 	
-	//double get_tAvSAvVelXScaled() const;
-		
-	//double get_tAvSAvVelYScaled() const;
-	
 	void calcBfield();
+	
+	CParticle get_firstPin() const;
 
 private:
 
-	//int loop();
-	
 	void OutputResults();
 	
 	void initialise_files();
 	
-	void initialisePins();
-	
-	void initialisePinsTube();
-	
-	void initialisePinsPeriodic();
-	
-	void initialiseVortices();
-	
-	void initialiseVorticesTube();
-	
-	void initialiseVorticesPeriodic();
-	
-	void initialiseChannelDisorder();
-	
 	void delaunayTriangulation(std::list<CParticle> vorticesList_);
-	
-	//void removeEscapedVortices();
-	
-	//void removeEscapedVorticesTube(); 
-	
-	//void removeEscapedVorticesPeriodic(); 
 	
 	void calculateAvVel();
 	
 	void OutputFinalVortexPositions();
 	
-	void read_PinsList();
-	
 	void calculateFinishTime();
 	
-	bool inSystem(double x_, double y_);
-	
-	// Writes jobBatch information to jobheader 
-	// and contains all information required to correctly view the
-	// the data using the read run type
 	void iniwrite_jobheader();
 	
-	// reads the run specific ini file
 	void iniread_JobBatchFile();
-	
-		// reads the file written by iniwrite_jobheader()
-	void iniread_JobHeader();
 	
 	void configure_simulation();
 	
@@ -528,18 +409,6 @@ private:
 	
 	void OutputVortexPositions(); 							// Outputs positions and coord num of vortices using delVortexList
 	
-	void UpdateTrajectories();									// Update trajectories and calls output at end of simulation
-	
-	void OutputTrajectory
-			(std::list<CParticle>::iterator p_); 		// Outputs a trajectory if vortex escapes (or destroyed)
-
-	int NextTrajectory();												// creates a trajectory and returns the trajectory number
-	
-	void calculateForces();       							// Calculates forces on particles
-	
-	
-	void ApplyAnnealing();					// Slowly anneals the system
-
 	int FindClosestParticle
 		(double x_, double y_, std::vector<CParticle> &test_vector_);			//	Finds the closest particle to a position x, y in a given vector of CParticles, returns index of Particle
 
@@ -547,15 +416,11 @@ private:
 	
 	double calcSinkRhoV(); // calculates the denisty of sink for LJ and Gaussian simulations
 	
-	void SetSimIntervals(); // variable timesteps based on temperature
-	
 	void updateBathDensities(); // Maintains source and sink densities
 	
 	bool AddParticleToBath(std::string location_); 	//		Adds particle to source or sink
 	
 	bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
-	
-	void StartDataCollection();
 	
 	GeometryBase * CreateGeometry();
 	

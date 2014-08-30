@@ -7,8 +7,10 @@
 
 #include <vector>
 
+class CParticle;
+
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  class OptionBase
+//  class GeometryBase
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 class GeometryBase
@@ -16,12 +18,15 @@ class GeometryBase
     public:
         virtual ~GeometryBase(){}
         
-        virtual void RemoveEscapedVortices() const = 0;
-        virtual void InitialisePins() const = 0;
+        virtual void ReplaceEscapedVortices() const = 0;
+        virtual void InitialisePins() = 0;
         virtual void InitialiseVortices() const = 0;
         virtual void AddParticlesForDT() const = 0;
-        virtual void WrapSystem() const = 0;
-        
+        virtual void WrapSystem() const = 0; 
+        virtual void InitialiseDisorder() const = 0;
+        virtual CParticle GetFirstPin() const = 0;
+        virtual double GetRemovalSourceX() const = 0;
+        virtual double GetRemovalSinkX() const = 0;
              
 };
 

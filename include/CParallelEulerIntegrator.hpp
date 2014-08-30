@@ -67,16 +67,6 @@ private:
 			 double &velx_,
 			 double & vely_);												// Apply max velocities
 
-	void ApplyReboundConditions
-			(std::list<CParticle>::iterator p_,
-			 double & velx_,
-			 double & vely_);												// Apply rebound conditions at CE
-	
-	void ApplyBounceBackConditions
-			(std::list<CParticle>::iterator p_,
-			 double & velx_,
-			 double & vely_);												// Apply bounce back conditions at CE
-	
 	void CheckDouble
 			(double num_,
 			 std::string varname_,
@@ -148,15 +138,9 @@ private:
 	
 	double a0;
 	
-	bool reflected_channel_ends;
-	
-	bool flat_channel_ends;
-	
 	bool applyBathVelocities;
 	
 	bool applyMaxVelocities;
-	
-	bool applyBounceBack;
 	
 	double kB;
 	
@@ -177,12 +161,6 @@ private:
 	double b0;
 	
 	double lambda;
-	
-	double reboundy0, reboundy1; 
-	double reboundx0, reboundx1; 
-	
-	double bouncebacky0, bouncebacky1; 
-	double bouncebackx0, bouncebackx1;
 	
 	// reference variables
 		

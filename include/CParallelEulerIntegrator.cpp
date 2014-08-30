@@ -50,8 +50,6 @@ av_force_t(sim_->av_force_t)
 	//get parameters from sim class
 	applyStiffBath=sim->get_applyStiffBath();
 	applyMaxVelocities=sim->get_applyMaxVelocities();
-	applyBathVelocities=sim->get_applyBathVelocities();
-	applyBounceBack=sim->get_applyBounceBack();
 	
 	geometry=sim->get_geometry();
 	vvForce=sim->get_vvForce();
@@ -72,22 +70,11 @@ av_force_t(sim_->av_force_t)
 	bathLength=sim->get_bathLength();
 	bathWidth=sim->get_bathWidth();
 	a0=sim->get_a0();
-	flat_channel_ends=sim->get_flat_channel_ends();
-	reflected_channel_ends=sim->get_reflected_channel_ends();
+	
 	f0=sim->get_f0();
 	f0bath=sim->get_f0bath();
 	thermostat=sim->get_thermostat();
 	b0=sim->get_b0();
-	
-	reboundy0=sim->get_reboundy0();
-	reboundy1=sim->get_reboundy1(); 
-	reboundx0=sim->get_reboundx0();
-	reboundx1=sim->get_reboundx1(); 
-	
-	bouncebacky0=sim->get_bouncebacky0();
-	bouncebacky1=sim->get_bouncebacky1(); 
-	bouncebackx0=sim->get_bouncebackx0();
-	bouncebackx1=sim->get_bouncebackx1();
 	
 	lambda=sim->get_lambda();
 		
@@ -181,8 +168,6 @@ void CParallelEulerIntegrator::Integrate()
 					double pinsForce[2]={0,0};
 					double disorderForce[2]={0,0};
 					double tempForce[2]={0,0};
-					double reflectedvortexForce[2]={0,0};
-					double channelEndsForce=ChannelEndsInteration(p);
 					
 					// calculate forces due to temperature kick 
 					temperatureInteraction(p,tempForce);
@@ -225,25 +210,21 @@ void CParallelEulerIntegrator::Integrate()
 							{
 								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,BesselsForce);
 								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,BesselsForce);
-								rvvInteration(p,(*lastcll[k][l].get_cellList()),reflectedvortexForce,JxyV,JyxV,JxxV,JyyV,inbath,0,BesselsForce);
 							}
 							else if (vvForce==BessLogType)
 							{
 								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,BessLogForce);
 								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,BessLogForce);
-								rvvInteration(p,(*lastcll[k][l].get_cellList()),reflectedvortexForce,JxyV,JyxV,JxxV,JyyV,inbath,0,BessLogForce);
 							}
 							else if (vvForce==GaussianType)
 							{
 								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianForce);
 								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianForce);
-								rvvInteration(p,(*lastcll[k][l].get_cellList()),reflectedvortexForce,JxyV,JyxV,JxxV,JyyV,inbath,0,GaussianForce);
 							}
 							else if (vvForce==LJType)
 							{
 								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,LJForce);
 								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,LJForce);
-								rvvInteration(p,(*lastcll[k][l].get_cellList()),reflectedvortexForce,JxyV,JyxV,JxxV,JyyV,inbath,0,LJForce);
 							}
 							
 							
@@ -258,8 +239,8 @@ void CParallelEulerIntegrator::Integrate()
 					
 					
 					
-					double forcep_dx = vortexForce[0]+Ap*pinsForce[0]+disorderForce[0]+lorentzForce+channelEndsForce+reflectedvortexForce[0];
-					double forcep_dy = vortexForce[1]+Ap*pinsForce[1]+disorderForce[1]+reflectedvortexForce[1];
+					double forcep_dx = vortexForce[0]+Ap*pinsForce[0]+disorderForce[0]+lorentzForce;
+					double forcep_dy = vortexForce[1]+Ap*pinsForce[1]+disorderForce[1];
 					
 					double forcep_tx = tempForce[0];
 					double forcep_ty = tempForce[1];
@@ -277,13 +258,6 @@ void CParallelEulerIntegrator::Integrate()
 					ApplyMaxVelocities(p,velx,vely);
 					
 					ApplyBathVelocities(p,velx,vely);			
-					
-					ApplyReboundConditions(p,velx,vely);
-					
-					ApplyBounceBackConditions(p,velx,vely);
-					
-					//if (velx>a0/50/dt || velx<-a0/50/dt) std::cout << "Displacement too large |dx| = " << velx*dt << " > a0/50" << std::endl;					
-					//if (vely>a0/50/dt || vely<-a0/50/dt) std::cout << "Displacement too large |dy| = " << vely*dt << " > a0/50" << std::endl;					
 					
 					// set velocity then check if valid
 					
@@ -316,19 +290,6 @@ void CParallelEulerIntegrator::Integrate()
 	CellLinkedListToList(cll,vorticesList);
 	ClearLinkedLists();
 	
-	// Update moments
-	/*if ("Anderson"==thermostat)
-    {
-			M2=M2/dt/Nc;
-			M2Full=M2Full/dt/vorticesList.size();
-		}
-	else if ("Lindeman"==thermostat) M2=M2/Nc;
-	else M2=0;
-	*/
-	//M2Sum=M2Sum+M2;
-	//M2FullSum=M2FullSum+M2Full;
-
-		
 	// average forces per particle for the system
 	frame_force_d = 0;
 	frame_force_t = 0;
@@ -815,97 +776,6 @@ void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator
 }
 
 
-//*************************************************************************************************************
-// 
-// Apply rebound conditions at CE
-//
-//
-//*************************************************************************************************************
-
-void CParallelEulerIntegrator::ApplyReboundConditions(std::list<CParticle>::iterator p_, double & velx_, double & vely_)
-{
-	return;
-	if (geometry!=channel && geometry!=BSCCO && geometry!=wedge)
-		return;
-		
-	if (p_->get_y()+vely_*dt>reboundy1)
-	{
-		double reflectedy = reboundy1-(p_->get_y()+vely_*dt-reboundy1);
-		vely_=(reflectedy-p_->get_y())/dt;
-	}
-	else if (p_->get_y()+vely_*dt<reboundy0)
-	{
-		double reflectedy = reboundy0-(p_->get_y()+vely_*dt-reboundy0);
-		vely_=(reflectedy-p_->get_y())/dt;
-	}
-
-	if (p_->get_x()+velx_*dt>reboundx1)
-	{
-		double reflectedx = reboundx1-(p_->get_x()+velx_*dt-reboundx1);
-		velx_=(reflectedx-p_->get_x())/dt;
-	}
-	else if (p_->get_x()+velx_*dt<reboundx0)
-	{
-		double reflectedx = reboundx0-(p_->get_x()+velx_*dt-reboundx0);
-		velx_=(reflectedx-p_->get_x())/dt;
-	}
-
-
-
-}
-
-
-//*************************************************************************************************************
-// 
-// Apply rebound conditions at CE
-//
-//
-//*************************************************************************************************************
-
-void CParallelEulerIntegrator::ApplyBounceBackConditions(std::list<CParticle>::iterator p_, double & velx_, double & vely_)
-{
-	if (applyBounceBack==false)
-		return;
-		
-	if (geometry!=channel && geometry!=BSCCO && geometry!=wedge)
-		throw std::runtime_error("ApplyBounceBackConditions() Can only apply rebound conditions in channel, wedge or BSCCO geometry");
-	
-	// check if vortex hits CE. If so bounceback.
-				
-	if (p_->get_y()+vely_*dt>bouncebacky1)
-	{
-		//double reflectedy = bouncebacky1-(p_->get_y()+vely_*dt-bouncebacky1);
-		//vely_=(reflectedy-p_->get_y())/dt;
-		velx_=0;
-		vely_=0;
-	}
-	else if (p_->get_y()+vely_*dt<bouncebacky0)
-	{
-		//double reflectedy = bouncebacky0-(p_->get_y()+vely_*dt-bouncebacky0);
-		//vely_=(reflectedy-p_->get_y())/dt;
-		velx_=0;
-		vely_=0;
-	}
-
-	if (p_->get_x()+velx_*dt>bouncebackx1)
-	{
-		//double reflectedx = bouncebackx1-(p_->get_x()+velx_*dt-bouncebackx1);
-		//velx_=(reflectedx-p_->get_x())/dt;
-		velx_=0;
-		vely_=0;
-	}
-	else if (p_->get_x()+velx_*dt<bouncebackx0)
-	{
-		//double reflectedx = bouncebackx0-(p_->get_x()+velx_*dt-bouncebackx0);
-		//velx_=(reflectedx-p_->get_x())/dt;
-		velx_=0;
-		vely_=0;
-	}
-
-
-
-}
-
 
 //*************************************************************************************************************
 // 
@@ -976,102 +846,6 @@ void CParallelEulerIntegrator::CheckDuplicatePositions(CCell **cell_)
 		}
 	}
 }
-
-//*************************************************************************************************************
-// 
-//	ChannelEndsInteraction
-//
-//		Just applys flat wall potential at sink end of the channel
-//
-//*************************************************************************************************************
-
-double CParallelEulerIntegrator::ChannelEndsInteration(
-		std::list<CParticle>::iterator p_)
-{
-	if (flat_channel_ends==false) return 0;
-		
-	double r=p_->get_x();
-	double rprime=2*bathLength+channelLength-r;
-	//return 1e-9*exp(-(r*r)/1.0)/a0/a0-1e-9*exp(-(rprime*rprime)/1.0)/a0/a0;
-	//return BesselsForce(r,false,this)-BesselsForce(rprime,false,this);
-	return -BesselsForce(rprime,false,sim);
-}
-
-//*************************************************************************************************************
-// 
-// Calculates the reflected vortex-vortex interation at the source end of the channel
-//
-//*************************************************************************************************************
-
-void CParallelEulerIntegrator::rvvInteration(
-		std::list<CParticle>::iterator p_,
-		std::list<CParticle> & cell_,  
-		double (&force_)[2],
-		double & JxyV_,
-		double & JyxV_,
-		double & JxxV_,
-		double & JyyV_,
-		const bool &inbath_,
-		double wall_position_,
-		boost::function<double (double,bool, CSimulation *)> func_
-		)
-{
-	if (reflected_channel_ends==false) return;
-	
-	if (p_->get_x() > forceRange)
-		return;
-
-		
-	double forceSum[2]={0,0};
-	
-	for(std::list<CParticle>::iterator q = cell_.begin();
-									q != cell_.end(); ++q)
-	{
-		if (q->get_id()==p_->get_id())
-				continue;
-				
-		double pxqx = p_->get_x()-(wall_position_-q->get_x());
-		double pyqy = p_->get_y()-q->get_y();
-		
-		// r is the distance between points
-		// rvector is the direction from q to p
-		// r hat is the unit vector pointing from q to p
-		
-		double r= sqrt( pxqx*pxqx + pyqy*pyqy );
-		
-		// check r is a valid number
-		if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
-		
-		if (boost::math::isinf(r)) throw std::runtime_error ("calculateForces() r is inf");
-
-		//only include vortices closer than the forceRange cutoff								
-		if (r > forceRange)
-				continue;
-		
-		// calculate rhat
-		double rvector[2]={pxqx,pyqy};
-		
-		if (r==0)
-			continue;
-			
-		double rhat[2] ={rvector[0]/r,rvector[1]/r};
-		
-		
-		double f=func_(r,inbath_,sim);
-		//forceForm(r,inbath_);
-		
-		forceSum[0]=forceSum[0]+f*rhat[0];
-		forceSum[1]=forceSum[1]+f*rhat[1];
-							
-	}
-	
-	force_[0]=force_[0]+forceSum[0];
-	force_[1]=force_[1]+forceSum[1];
-	
-	
-	
-}
-
 
 void CParallelEulerIntegrator::ClearLinkedLists()
 {

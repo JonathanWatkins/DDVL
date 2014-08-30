@@ -56,6 +56,8 @@ double CSimulation::get_tAvSAvVelY() const { return avYVel/(double)t; } //Return
 
 double CSimulation::get_tAvSAvVelX() const { return avXVel/(double)t; } // Returns time and space average of velx of channel vortices
 
+CParticle CSimulation::get_firstPin() const { return geom->GetFirstPin(); }
+
 CSimulation::CSimulation()
 {
 	startTime=clock();
@@ -79,8 +81,6 @@ CSimulation::CSimulation()
 	channelWidth=0;
 	sourceBfield=0;
 	sinkBfield=0;
-	sourceDensity=0;
-	sinkDensity=0;
 	framedataInterval=5;
 	original_T=0;
 	rhov=1;
@@ -108,21 +108,11 @@ CSimulation::CSimulation()
 	applyBounceBack=false;
 	applyMaxVelocities=false;
 	alt_pos_file=false;
-	alt_pos_file_name="";
 	pos_file_name="";
 	alt_pins_file=false;
-	alt_pins_file_name="";
 	pins_file_name="";
 	f0_rcut_correction=0;
 	f0bath_rcut_correction=0;
-	reboundx0=0;
-	reboundx1=0;
-	reboundy0=0;
-	reboundy1=0;
-	bouncebackx0=0;
-	bouncebackx1=0;
-	bouncebacky0=0;
-	bouncebacky1=0;
 	
 
 	Av=0;
@@ -135,7 +125,7 @@ CSimulation::CSimulation()
 	frame_force_t = 0;
 	frame_force_d = 0;
 	
-	geom = CreateGeometry();
+	
 	
 	version.set_versionStr("1.0.0");	
 
@@ -174,22 +164,19 @@ void CSimulation::DoStep()
 	
 	calculateFinishTime();
 	
-		//std::cout << "a";
-	//if (geometry==channel) removeEscapedVortices();
-	//else if (geometry==tube) removeEscapedVorticesTube();
-	geom->RemoveEscapedVortices();	
+	geom->ReplaceEscapedVortices();	
 		
 	//std::cout << "b";
 	clock_t startclock = clock();
 		
 	integrator->Integrate();
-		
+	
 	ftime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	fcount++;
 	
 	startclock = clock();
-	delaunayTriangulation(vorticesList);
-	//delVortexList=vorticesList;	
+	//delaunayTriangulation(vorticesList);
+	delVortexList=vorticesList;	
 	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	DTcount++;
 			
@@ -208,28 +195,21 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	// make jobnum from seedtime and jobtag from jobbatch file	
 	std::stringstream oss;
 	oss << "job" << seedtime << "-" << jobtag; 
+	
 	jobnum=oss.str();
 	std::cout << "JobNum: " << jobnum << std::endl << std::endl;
-	
-	
+		
 	// run initial functions
-	
-	configure_simulation();
 	
 	initialise_files();
 	
-	if (geometry==channel) initialisePins();
-	else if (geometry==tube) initialisePinsTube();
+	geom = CreateGeometry();
+			
+	geom->InitialiseVortices();
 	
-	if (geometry==channel) initialiseVortices();
-	else if (geometry==tube) initialiseVorticesTube();
-		
-	initialiseChannelDisorder();
+	geom->InitialisePins();
 	
-	// output all variables to jobheader as a record
-	// and for use with the read run.
-	iniwrite_jobheader();
-	
+	geom->InitialiseDisorder();
 	
 	// set some variables
 	
@@ -241,14 +221,16 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	
 	integrator = new CParallelEulerIntegrator(this);
 	
-	std::cout << "firstPin " << firstPin.get_x() << ", " << firstPin.get_y() << std::endl;
+	std::cout << "firstPin " << geom->GetFirstPin().get_x() << ", " << geom->GetFirstPin().get_y() << std::endl;
+		
+	iniwrite_jobheader();
 	
 	std::cout << "   Simulation initialised.\n\n";
-	
+		
 	initialised = true;
+	
 	return 0;
 }
-
 
 void CSimulation::initialise_files()
 {
@@ -301,135 +283,6 @@ void CSimulation::OutputSimulationTimes()
 	
 }
 
-void CSimulation::initialisePins()
-{
-	//double offset=channelOffset;//channelWidth/2.0;
-	
-	std::cout << "Initialising pins..." << std::endl;
-	
-	
-	double locala0=a0;
-	double localb0=b0;
-	double xPos;
-	
-	systemWidth=12*localb0+bathWidth+3*localb0/2.0;
-	systemLength=6*locala0+2*bathLength+channelLength+locala0/2.0;
-	
-	firstPin.set_pos(-3*a0,-6*localb0-channelOffset);
-	
-	
-	if (alt_pins_file==true)
-	{
-			std::cout << "   " << pins_file_name << std::endl;
-	
-			std::ifstream myfile (pins_file_name.c_str());
-	
-				
-			if (myfile.is_open()) 
-			{
-				std::cout << "   " << "Initial CE Positions From File" << std::endl;
-				
-				double xval;
-				double yval;
-			
-				while ( myfile.good() )
-				{
-					myfile >> xval;
-					myfile >> yval;
-				
-					CParticle newVortex;
-					newVortex.set_pos(xval,yval);
-					pinsList.push_back(newVortex);
-			
-				}
-				myfile.close();
-			
-			}
-		}
-	else
-	{
-		if (geometry==BSCCO) return;
-		
-		double yPos=firstPin.get_y();
-		
-		//std::cout << "Bottom Limit: " << yPos << std::endl; 
-		//std::cout << "Top Limit: " << bathWidth+6*localb0-channelOffset << std::endl; 
-		
-		while (yPos<bathWidth+6*localb0-channelOffset-0.1*b0)
-		{
-			xPos=firstPin.get_x();
-		
-			while (xPos<bathLength+channelLength+bathLength+3*locala0)
-			{
-		
-				CParticle newPin;
-				newPin.set_pos(xPos,yPos+localb0/2.0);
-				pinsList.push_back(newPin);
-		
-				newPin.set_pos(xPos+locala0/2.0,yPos+3*localb0/2.0);
-				pinsList.push_back(newPin);
-				
-				xPos=xPos+locala0;
-		
-			}
-		
-			yPos=yPos+2*localb0;
-			std::cout << "   yPos: " << yPos << std::endl;
-		}
-		
-		//etch source, sink && channel
-		bool removed;
-		std::list<CParticle>::iterator p= pinsList.begin();
-		
-		while (p!=pinsList.end())
-		{
-			removed=false;
-			
-			if (flat_channel_ends==true)
-			{
-				
-				if (p->get_y() > etchsourcey0 && p->get_y() < etchsourcey1 )
-				{
-					p=pinsList.erase(p);
-					removed=true;
-			
-				}
-				
-			}
-			else
-			{
-				//etch source
-				if (  p->get_x() > etchsourcex0 && p->get_x() < etchsourcex1
-					&& p->get_y() > etchsourcey0 && p->get_y() < etchsourcey1 )
-				{
-					p=pinsList.erase(p);
-					removed=true;
-			
-				}
-				else if (  p->get_x() > etchchannelx0 && p->get_x() < etchchannelx1
-					&& p->get_y() > etchchannely0 && p->get_y() < etchchannely1 )
-				{
-					p=pinsList.erase(p);
-					removed=true;
-				
-				}
-				else if (  p->get_x() > etchsinkx0 && p->get_x() < etchsinkx1
-					&& p->get_y() > etchsinky0 && p->get_y() < etchsinky1 )
-				{
-					p=pinsList.erase(p);
-					removed=true;
-				}
-			}
-		
-			if (removed==false) { ++p; }
-		
-		
-		}
-	}
-	std::cout << "   initialisePins() created " << pinsList.size() << " CE vortices." << std::endl <<std::endl;
-	
-}
-
 void CSimulation::iniwrite_jobheader()
 {
 	if (outputType==0)
@@ -464,7 +317,7 @@ void CSimulation::iniwrite_jobheader()
 	
 	*fileOutputter.getFS("guiheader") <<"[InputData]\n"
 	<< "altPosFile=" << alt_pos_file << std::endl
-	<< "altPosFileName="<< alt_pos_file_name << std::endl
+	<< "altPosFileName="<< pos_file_name << std::endl
 	<< std::endl;
 	
 
@@ -495,16 +348,11 @@ void CSimulation::iniwrite_jobheader()
 	*fileOutputter.getFS("guiheader") <<"[ConfigVariables]\n"
 	<< "f0=" << f0 << std::endl
 	
-	<< "sourceDensity=" << sourceDensity << std::endl
-	<< "sinkDensity=" << sinkDensity << std::endl
-	<< "channelDensity=" << channelDensity << std::endl
 	<< std::endl;
 		
 	*fileOutputter.getFS("guiheader") << "[DrawingVariables]\n"
-	<< "firstPinx=" << firstPin.get_x() << std::endl
-	<< "firstPiny=" << firstPin.get_y() << std::endl
-	<< "systemLength=" << systemLength << std::endl
-	<< "systemWidth=" << systemWidth << std::endl
+	<< "firstPinx=" << geom->GetFirstPin().get_x() << std::endl
+	<< "firstPiny=" << geom->GetFirstPin().get_y() << std::endl
 	<< std::endl;
 
 	*fileOutputter.getFS("guiheader") << "[GeneralParameters]\n"
@@ -554,7 +402,6 @@ void CSimulation::iniwrite_jobheader()
   
 }
 
-
 void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 {
 	delVortexList.clear();
@@ -562,50 +409,9 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 	
 	std::list<CLineIDs> lines;
 	
-	//std::cout << "Start Triangulation" << std::endl;
-	//add edge of pins list to vortices list
-	if (geometry==channel)
-	{
-		for(std::list<CParticle>::iterator p=pinsList.begin();
-				p!=pinsList.end();p++)
-		{
-			if (  p->get_x() > 0 && p->get_x() < 2*bathLength+channelLength
-					&& p->get_y() > etchchannely0-a0 && p->get_y() < etchchannely1+a0 )
-			{
-				(*p).set_ghost();	
-				vorticesList_.push_back(*p);
-			}
-		}
-	}
-	// wrap vortices for correct triangulation in tube
-	if (geometry==tube)
-	{
-		for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p!=vorticesList.end(); ++p )
-		{
-			if (p->get_y() <= 2*b0)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+channelWidth+b0);
-				newVortex.set_ghost();
-				vorticesList_.push_back(newVortex);
-			}
-			else if (p->get_y() >= channelWidth-2*b0)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-channelWidth-b0);
-				newVortex.set_ghost();
-				vorticesList_.push_back(newVortex);
-			}
-		
-		}
-		
-		
-	}
+	geom->AddParticlesForDT();
 	
-  	/* Define input points. */
+	/* Define input points. */
 
 	int numberofpoints = vorticesList_.size();
   
@@ -697,7 +503,7 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 	
 	std::list<CDelLine>::iterator p = delLinesList.begin();
   
-	if (geometry==channel) 
+	/*if (geometry==channel) 
 	{
 		while (p != delLinesList.end())
 		{
@@ -752,366 +558,9 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 		
 			if (removed==false) { ++p; }
 		}
-	}
+	}*/
 	
 }
-
-void CSimulation::initialiseVortices()
-{
-	
-	std::cout << "Initialising Vortices..." << std::endl;
-	std::cout << "   " << "sourceDensity: " << sourceDensity << std::endl;
-	std::cout << "   " << "sinkDensity: " << sinkDensity << std::endl;
-  
-	std::cout << "   " << pos_file_name << std::endl;
-			
-	std::ifstream myfile (pos_file_name.c_str());
-	
-	
-	if (myfile.is_open())
-	{
-		std::cout << "   " << "Initial Vortex Positions From File" << std::endl;
-		//file = true;
-		double xval;
-		double yval;
-    
-    while ( myfile.good() )
-    {
-		myfile >> xval;
-		myfile >> yval;
-		
-		CParticle newVortex;
-		newVortex.set_pos(xval,yval);
-		newVortex.set_TrajectoryNumber(NextTrajectory());
-		//std::cout << "Trajectory Number: " << newVortex.get_TrajectoryNumber() << std::endl;
-		static bool setBoundaryTracker=false;
-		static bool setChannelTracker=false;
-		
-		if (yval<3.0*b0/4 &&
-				xval>bathLength+2*a0 &&
-				xval<bathLength+4*a0 &&
-				setBoundaryTracker==false)
-		{
-			newVortex.set_Tracked();
-			setBoundaryTracker=true;
-		}
-		
-		if (yval<channelWidth/2+b0/2 &&
-				yval>channelWidth/2-b0/2 &&
-				xval>bathLength+2*a0 &&
-				xval<bathLength+4*a0 &&
-				setChannelTracker==false)
-		{
-			newVortex.set_Tracked();
-			setChannelTracker=true;
-		}
-		
-		vorticesList.push_back(newVortex);
-			
-			
-    }
-    myfile.close();
-
-	}
-	else {
-	
-		std::cout << "   " << "no start data" << std::endl;
-		//file = false;
-	
-		for (int i = 0; i<(sourceDensity);i++) {
-				
-			double xval,yval;
-			
-			xval = bathLength*(rand() % 1000)/1000.0;
-			yval = bathWidth*(rand() % 1000)/1000.0;
-			//yval = yval-channelOffset;
-			
-			CParticle newVortex;
-				
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-		
-		}
-		for (int i = 0; i<(sinkDensity);i++) {
-		
-			CParticle newVortex;
-			double xval= bathLength*(rand() % 1000)/1000.0+channelLength+bathLength;
-			double yval = bathWidth*(rand() % 1000)/1000.0;
-			//yval = yval-channelOffset;
-			//cout << "sink vortex: " << xval << ", " << yval << endl;
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-			
-			
-		}	
-		//cout << "sink done" << endl;
-		
-		
-		
-		for (int i = 0; i<(channelDensity);i++)
-		{
-			
-			double xval = channelLength*(rand() % 1000)/1000.0+bathLength;
-			double yval = channelWidth*(rand() % 1000)/1000.0;
-			//cout << "channel vortex: " << xval << ", " << yval << endl;
-			CParticle newVortex;
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			static bool setBoundaryTracker=false;
-			static bool setChannelTracker=false;
-			
-			if (yval<3.0*b0/4 &&
-					xval>bathLength+2*a0 &&
-					xval<bathLength+4*a0 &&
-					setBoundaryTracker==false)
-			{
-				newVortex.set_Tracked();
-				setBoundaryTracker=true;
-			}
-			
-			if (yval<channelWidth/2+b0/2 &&
-					yval>channelWidth/2-b0/2 &&
-					xval>bathLength+2*a0 &&
-					xval<bathLength+4*a0 &&
-					setChannelTracker==false)
-			{
-				newVortex.set_Tracked();
-				setChannelTracker=true;
-			}
-			
-			
-			vorticesList.push_back(newVortex);
-		
-		}	
-		
-	}
-   
-	std::cout << "   " << "initialiseVortices() created " << vorticesList.size() << " vortices." << std::endl << std::endl;
-}
-
-//void CSimulation::removeEscapedVortices()
-//{
-//  
-//}
-
-
-
-void CSimulation::initialiseVorticesTube()
-{
-	
-	std::cout << "Initialising Vortices (Tube)..." << std::endl;
-	std::cout << "   " << "sourceDensity: " << sourceDensity << std::endl;
-	std::cout << "   " << "sinkDensity: " << sinkDensity << std::endl;
-	
-	
-	std::cout << "   " << pos_file_name << std::endl;
-	
-	std::ifstream myfile (pos_file_name.c_str());
-	
-	
-	if (myfile.is_open()) 
-	{
-		std::cout << "   " << "Initial Vortex Positions From File" << std::endl;
-		
-		double xval;
-		double yval;
-	
-		while ( myfile.good() )
-		{
-			myfile >> xval;
-			myfile >> yval;
-		
-			CParticle newVortex;
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-	
-		}
-		myfile.close();
-	
-	}
-	else
-	{
-		std::cout << "   " << "no start data" << std::endl;
-		
-		for (int i = 0; i<(sourceDensity);i++)
-		{
-			double xval,yval;
-	
-			xval = bathLength*(rand() % 1000)/1000.0;
-			yval = bathWidth*(rand() % 1000)/1000.0;
-			
-	
-	
-			CParticle newVortex;
-	
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-	
-			vorticesList.push_back(newVortex);
-	
-		}
-		for (int i = 0; i<(sinkDensity);i++)
-		{
-			CParticle newVortex;
-			double xval= bathLength*(rand() % 1000)/1000.0+bathLength+channelLength;
-			double yval = bathWidth*(rand() % 1000)/1000.0;
-			
-		
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-		
-		
-		}	
-	
-	
-	
-		for (int i = 0; i<(channelDensity);i++)
-		{
-			double xval = channelLength*(rand() % 1000)/1000.0+bathLength;
-			double yval = channelWidth*(rand() % 1000)/1000.0;
-			
-			
-			CParticle newVortex;
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-			
-		}	
-	
-	
-	
-	
-	}
-	
-	std::cout << "   " << "initialiseVorticesTube() created " << vorticesList.size() << " vortices." << std::endl << std::endl;
-}
-
-void CSimulation::initialisePinsTube()
-{
-	std::cout << "Initialising pins(Tube)..." << std::endl;
-	
-	double locala0=a0;
-	double localb0=b0;
-	
-	double xPos;
-	
-	systemWidth=20*localb0+channelWidth+3*localb0/2.0;
-	systemLength=6*locala0+2*bathLength+channelLength+locala0/2.0;
-	
-	firstPin.set_pos(-3*a0,-10*localb0-channelOffset);
-	
-	double yPos=firstPin.get_y();
-	
-	//std::cout << "Bottom Limit: " << yPos << std::endl; 
-	//std::cout << "Top Limit: " << bathWidth+6*localb0-channelOffset << std::endl; 
-	
-	while (yPos<channelWidth+10*localb0-channelOffset-0.1*b0)
-	{
-		xPos=firstPin.get_x();
-
-	    while (xPos<2*bathLength+channelLength+3*locala0)
-	    {
-			CParticle newPin;
-			newPin.set_pos(xPos,yPos+localb0/2.0);
-			pinsList.push_back(newPin);
-					
-			newPin.set_pos(xPos+locala0/2.0,yPos+3*localb0/2.0);
-			pinsList.push_back(newPin);
-			
-			xPos=xPos+locala0;
-			
-		}
-		
-		yPos=yPos+2*localb0;
-	}
-		
-	//etch source, sink and channel
-	bool removed;
-	
-	std::list<CParticle>::iterator p= pinsList.begin();
-	
-	while (p!=pinsList.end())
-	{
-		
-		removed=false;
-		
-		if (  p->get_x() > etchsourcex0 && p->get_x() < etchsinkx1
-		  )
-		{
-			p=pinsList.erase(p);
-			removed=true;
-		}
-		
-		if (removed==false) { ++p; }
-	
-			
-	}
-	
-	std::cout << "   initialisePinsTube() created " << pinsList.size() << " 'CE' vortices." << std::endl <<std::endl;
-
-}
-
-
-/*
-void CSimulation::removeEscapedVorticesTube()
-{
-  
-  std::list<CParticle>::iterator p = vorticesList.begin();
-  
-  while (p != vorticesList.end()) {
-		bool removed=false;
-		if (p->get_x() <= removesourcex)
-		{
-			
-			OutputTrajectory(p);
-			
-			std::cout << "Removed at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-			
-		}
-		else if (p->get_x() >= removesinkx)
-		{
-			
-			OutputTrajectory(p);
-			
-			std::cout << "Removed at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-
-			p=vorticesList.erase(p);
-			//p--;
-			removed=true;
-			
-		} 
-		 else if ((p->get_y() <= removetopchannely) &&  (p->get_x() > removesourcex) )  {
-			std::cout << "wrapped at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p->set_pos(p->get_x(),p->get_y()+channelWidth+b0);
-			//p=vorticesList.erase(p);
-			//p--;
-			//removed=true;
-		}  else if ((p->get_y() >= removebottomchannely) &&  (p->get_x() > removesourcex) )  {
-			std::cout << "wrapped at " << t << " pos (" <<  p->get_x() << ", " << p->get_y() << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
-			p->set_pos(p->get_x(),p->get_y()-channelWidth-b0);
-			//p=vorticesList.erase(p);
-			//p--;
-			//removed=true;
-		}
-	
-		if (removed==false) { ++p; }
-	
-	}
-}
-*/
-//********************************************************************************************
-// 
-//	Reads the job.bat file for a write job 
-// 
-//*******************************************************************************************
 
 void CSimulation::iniread_JobBatchFile() 
 {
@@ -1150,17 +599,18 @@ void CSimulation::iniread_JobBatchFile()
 	alt_pos_file = pt.get<bool>("InputData.altPosFile");
 	if (alt_pos_file == true)
 	{
-			alt_pos_file_name = pt.get<std::string>("InputData.altPosFileName");
+			pos_file_name = pt.get<std::string>("InputData.altPosFileName");
 	
 	}
 	
 	alt_pins_file = pt.get<bool>("InputData.altPinsFile");
 	if (alt_pins_file == true)
 	{
-			alt_pins_file_name = pt.get<std::string>("InputData.altPinsFileName");
+			pins_file_name = pt.get<std::string>("InputData.altPinsFileName");
 	
 	}
-	
+				
+			
 	// interactions
 	vvForce=pt.get<double>("Interactions.vvForce");
 	if(vvForce==GaussianType)
@@ -1292,206 +742,6 @@ void CSimulation::iniread_JobBatchFile()
 	
 }
 
-void CSimulation::configure_simulation()
-{
-	
-	channelOffset = (bathWidth-channelWidth)/2.0;
-	
-	etchsourcex0 =0; 
-	etchsourcey0= -channelOffset;
-	etchsourcex1 =bathLength-0.1*a0; 
-	etchsourcey1= channelWidth+channelOffset;
-	
-	etchsinkx0 =bathLength+channelLength+0.1*a0; 
-	etchsinky0= -channelOffset;
-	etchsinkx1 =bathLength+channelLength+bathLength; 
-	etchsinky1= channelWidth+channelOffset;
-	
-	etchchannelx0=0;
-	etchchannely0=0;
-	etchchannelx1=bathLength+channelLength+bathLength;
-	etchchannely1=channelWidth;
-	
-	removesourcex=-a0/2;
-	removesinkx=bathLength+channelLength+bathLength+a0;
-	
-	removechannelx0=bathLength+a0/2;
-	removechannelx1=bathLength+channelLength-a0/2;
-	
-	removesourcey0=removetopchannely=channelOffset-3.0*b0/2;
-	removesourcey1=removebottomchannely=channelWidth+channelOffset+3.0*b0/2;
-	
-	reboundx0=0-b0;
-	reboundx1=2*bathLength+channelLength+b0;
-	
-	reboundy0=channelOffset-b0;
-	reboundy1=channelWidth+channelOffset+b0;
-	
-	bouncebackx0=0-b0;
-	bouncebackx1=2*bathLength+channelLength+b0;
-
-	bouncebacky0=channelOffset;
-	bouncebacky1=channelWidth + channelOffset;
-	
-	
-	
-	/* due to etch process any even channel width has the bottom row of pins at -b0.
-	 * Since the weff=channelWidth+b0 this puts the top row of pins at channelWidth+b0/2.
-	 * 
-	 * 
-	 */ 
-	
-	bulkx0=0;
-	bulkx1=2*bathLength+channelLength;
-	bulky0=0; 
-	bulky1=channelWidth-b0/2;
-  
-  
-	dislocationx0=bathLength;
-	dislocationx1=bathLength+channelLength;
-	dislocationy0=0;//1.1*a0;
-	dislocationy1=channelWidth;//channelHeight-1.1*a0;
-	
-	
-		
-	// physics
-	
-	if (vvForce==GaussianType || vvForce==LJType)
-	{
-		f0=1;
-		f0bath=1;
-	}
-	
-	std::cout << "   a0: " << a0 << std::endl;
-	
-	// densities for Bessel force
-	if (vvForce==BesselType || vvForce==BessLogType)	
-	{
-		if (geometry==channel)
-		{
-			sourceDensity=(int)(bathLength*bathWidth*sourceBfield/Phi); 
-			sinkDensity=(int)(bathLength*bathWidth*sinkBfield/Phi); 
-			channelDensity=(int)(channelLength*(channelWidth+b0)*((sourceBfield+sinkBfield)/Phi)/2.0); 	
-		}
-		else if (geometry==tube)
-		{
-			sourceDensity=(int)(bathLength*(channelWidth)*sourceBfield/Phi); 
-			sinkDensity=(int)(bathLength*(channelWidth)*sinkBfield/Phi); 
-			channelDensity=(int)(channelLength*(channelWidth+b0)*((sourceBfield+sinkBfield)/Phi)/2.0); 	
-		}
-		else
-		{
-			std::ostringstream oss;
-			oss.str("");
-			oss <<"configure_simulation() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-			throw std::runtime_error(oss.str());
-		}
-	}
-	else if (vvForce==GaussianType)
-	{
-		if (geometry==periodic && vvForce==GaussianType)
-		{
-			channelDensity=(int)(channelLength*channelWidth/b0*rhov); 	
-		}
-		else
-		{
-			std::ostringstream oss;
-			oss.str("");
-			oss <<"configure_simulation() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-			throw std::runtime_error(oss.str());
-		}
-		
-	}
-	else if (vvForce==LJType)
-	{
-			if (geometry==channel)
-			{
-				sourceDensity=(int)(bathLength/a0*bathWidth/b0*source_rhov); 
-				sinkDensity=(int)(bathLength/a0*bathWidth/b0*sink_rhov); 
-				channelDensity=(int)(channelLength/a0*(channelWidth+b0)/b0*0.5*(source_rhov+sink_rhov)); 		
-			}
-			else
-			{
-				std::ostringstream oss;
-				oss.str("");
-				oss <<"configure_simulation() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-				throw std::runtime_error(oss.str());
-			}
-			
-	}
-	else
-		{
-			std::ostringstream oss;
-			oss.str("");
-			oss <<"configure_simulation() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-			throw std::runtime_error(oss.str());
-		}
-	
-	
-	
-	if (geometry==channel)
-	{
-		std::ostringstream oss;
-		oss.str("");
-	
-		oss << "startdataMesh//" << sourceBfield << "-" << bathLength/a0<< "x" << bathWidth/b0 << "-"
-				<<  channelLength/a0 << "x" << channelWidth/b0 << "-"<< sinkBfield << ".txt";
-		
-		pos_file_name=oss.str();
-	}
-	else if (geometry==tube)
-	{
-		std::ostringstream oss;
-		oss.str("");
-	
-		oss << "startdataMesh//TE-" << sourceBfield << "-" << bathLength/a0<< "x" << bathWidth/b0 << "-" 
-				<<  channelLength/a0 << "x" << channelWidth/b0 << "-"<< sinkBfield << ".txt";
-		
-		pos_file_name=oss.str();
-	}
-	
-	
-	temp=original_T;
-		
-	
-	
-	
-	if (alt_pos_file==true)
-			pos_file_name = alt_pos_file_name;
-	
-	if (alt_pins_file==true)
-			pins_file_name = alt_pins_file_name;
-	
-	
-}
-
-
-void CSimulation::initialiseChannelDisorder()
-{
-	std::cout << "Initialising channel disorder..." << std::endl;
-	
-	std::cout << "   Number of Gaussian pins per a0^2: " << disorderDensity << std::endl;
-	
-	double numberChannelPins=channelLength*channelWidth*disorderDensity/a0/a0;	
-	std::cout << "   Number of Gaussin pins in this channel: " << numberChannelPins << std::endl;
-	
-	std::cout << "   Disorder strength: " << disorderStrength << std::endl;
-	std::cout << "   Disorder range: " << disorderRange << std::endl;
-	
-	
-	for (int i=0; i< numberChannelPins;i++)
-	{
-		double x=bathLength+channelLength*(rand()/(double)RAND_MAX);
-		double y=channelWidth*(rand()/(double)RAND_MAX);
-		CParticle newPin;
-		newPin.set_pos(x,y);
-		disorderList.push_back(newPin);
-	}
-	
-	std::cout << "   Channel disorder initialised." << std::endl << std::endl;
-
-}
-
 void CSimulation::calculateFinishTime()
 {
 	
@@ -1550,94 +800,6 @@ void CSimulation::calculateAvVel()
 	
 	
 }
-
-void CSimulation::initialiseVorticesPeriodic()
-{
-	
-	std::cout << "Initialising Vortices (periodic)..." << std::endl;
-	std::cout << "   " << "channelDensity: " << channelDensity << std::endl;
-		
-	std::cout << "   " << pos_file_name << std::endl;
-	
-	std::ifstream myfile (pos_file_name.c_str());
-	
-	
-	if (myfile.is_open()) 
-	{
-		std::cout << "   " << "Initial Vortex Positions From File" << std::endl;
-		
-		double xval;
-		double yval;
-	
-		while ( myfile.good() )
-		{
-			myfile >> xval;
-			myfile >> yval;
-		
-			CParticle newVortex;
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-	
-		}
-		myfile.close();
-	
-	}
-	else
-	{
-		std::cout << "   " << "no start data" << std::endl;
-		
-		for (int i = 0; i<(channelDensity);i++)
-		{
-			double xval = channelLength*(rand() % 1000)/1000.0;
-			double yval = channelWidth*(rand() % 1000)/1000.0;
-			
-			
-			CParticle newVortex;
-			newVortex.set_pos(xval,yval);
-			newVortex.set_TrajectoryNumber(NextTrajectory());
-			vorticesList.push_back(newVortex);
-			
-		}	
-	
-	
-	
-	}
-	
-	std::cout << "   " << "initialiseVorticesPeriodic() created " << vorticesList.size() << " vortices." << std::endl << std::endl;
-}
-
-/*void CSimulation::removeEscapedVorticesPeriodic()
-{
-  
-  std::list<CParticle>::iterator p = vorticesList.begin();
- 
-	while (p != vorticesList.end()) {
-		bool removed=false;
-		
-		if ((p->get_y() <= 0))
-		{
-			p->set_pos(p->get_x(),p->get_y()+channelWidth);
-		}
-		else if ((p->get_y() >= channelWidth))
-		{
-			p->set_pos(p->get_x(),p->get_y()-channelWidth);
-		}
-		else if ((p->get_x() <= 0))
-		{
-			p->set_pos(p->get_x()+channelLength,p->get_y());
-		}
-		else if ((p->get_x() >= channelLength) )
-		{
-			p->set_pos(p->get_x()-channelLength,p->get_y());
-		}
-		
-		if (removed==false) { ++p; }
-	
-	}
-}
-*/
-
 
 void CSimulation::OutputFinalVortexPositions()
 {
@@ -1870,12 +1032,6 @@ CParticle CSimulation::findClosestPin (CParticle a_)
 
 }
 
-//*************************************************************************************************************
-// 
-// Output Pins List
-//
-//*************************************************************************************************************
-
 void CSimulation::OutputPinsList()
 {
 	static bool PinsOutputDone = false;
@@ -1893,52 +1049,9 @@ void CSimulation::OutputPinsList()
 	
 }
 
-//*************************************************************************************************************
-// 
-//	Output Vortex Positions
-//
-//		and coordination number using the delVorticesList.
-//		Outputs everytime positions are triangulated.
-//
-//*************************************************************************************************************
-
 void CSimulation::OutputVortexPositions()
 {
-	// output position data
-	
-	
-	/*if (t%triangulationInterval==0 && t%framedataInterval==0)
-	{
 		
-		
-		
-		// vorticesList.size() should be the same as delVortexList.size() with the ghost particles
-		*fileOutputter.getFS("guifile") << "   " <<  "timestep: " << t << "   NumVortices: ";
-		int numVortices=0;
-		for (std::list<CParticle>::iterator p = delVortexList.begin();
-			p != delVortexList.end(); ++p)
-		{
-			if (p->get_ghost()!=true)
-			{
-				numVortices++;
-			}				 
-		}
-		 *fileOutputter.getFS("guifile") << numVortices << std::endl;
-		
-		for (std::list<CParticle>::iterator p = delVortexList.begin();
-			p != delVortexList.end(); ++p)
-		{
-			if (p->get_ghost()!=true)
-			{
-				*fileOutputter.getFS("guifile") << p->get_id() << " " << p->get_x() << " " << p->get_y() << " " << p->get_velx() << " " << p->get_vely() << " " << p->get_coord_num() << " " << p->get_a() << std::endl;
-			}				 
-		}
-	}
-	else *fileOutputter.getFS("guifile") << "   " <<  "timestep: " << t << "   NumVortices: 0" << std::endl;
-
-	*/
-	
-	
 	if (t==1) *fileOutputter.getFS("guifile") << "# This file contains frame data\n"
 																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
 	
@@ -1987,111 +1100,6 @@ void CSimulation::OutputVortexPositions()
 	
 	*fileOutputter.getFS("guifile") << "}" << std::endl;
 }
-
-//*************************************************************************************************************
-// 
-//	Update trajectories and calls output at end of simulation
-//
-// 		Records trajectories every 25 timesteps and calls OutputTrajectory at end of simulation.
-//		
-//
-//*************************************************************************************************************
-
-void CSimulation::UpdateTrajectories()
-{
-	if (false==calcTrajectories) return;
-	
-	if (simulation_time==t)
-	{
-		
-		for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p!= vorticesList.end(); ++p )
-		{
-				
-			OutputTrajectory(p);
-			
-		}
-		
-	}
-	
-	if (0!=t%25) return;
-	
-	for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p!= vorticesList.end(); ++p )
-	{
-			particleTrajectories[p->get_TrajectoryNumber()].add_TrajectoryPoint(p->get_x(),p->get_y());
-
-	}
-	
-	
-}
-
-//*************************************************************************************************************
-// 
-//	Outputs completed trajectories to file
-//
-// 		Outputs a trajectory of a vortex when vortex is destroyed ( all vortices destroyed at end of simulation).
-//		Records trajectories every 25 timesteps.
-//
-//*************************************************************************************************************
-
-
-void CSimulation::OutputTrajectory(std::list<CParticle>::iterator p_)
-{
-	
-	if (outputType==0)
-			return;
-	int TrajectoryNumber=p_->get_TrajectoryNumber();
-	
-	static int numOutputTraj=0;
-	numOutputTraj++;
-	// output final position
-			
-	particleTrajectories[TrajectoryNumber].add_TrajectoryPoint(p_->get_x(),p_->get_y());
-
-	// output trajectory to file
-
-	*fileOutputter.getFS("trajfile") << "Trajectory: " << numOutputTraj;
-		
-	int numpoints=particleTrajectories[TrajectoryNumber].get_NumPoints();
-		
-	*fileOutputter.getFS("trajfile") << "  NumPoints: " << numpoints << std::endl;
-	for (int q=0; q<numpoints;q++)
-	{
-			*fileOutputter.getFS("trajfile") << (*(particleTrajectories[TrajectoryNumber].get_xlist()) )[q] ;
-			*fileOutputter.getFS("trajfile") << " " << ( *(particleTrajectories[TrajectoryNumber].get_ylist()) )[q] << std::endl;
-
-
-	}
-	*fileOutputter.getFS("trajfile") << std::endl;
-	
-	
-}
-
-//*************************************************************************************************************
-// 
-//	Creates a trajectory and returns the trajectory number
-//
-//
-//*************************************************************************************************************
-
-int CSimulation::NextTrajectory()
-{
-	CTrajectory newTrajectory;
-	particleTrajectories.push_back(newTrajectory);
-	return particleTrajectories.size() - 1;
-	
-}
-
-
-//*************************************************************************************************************
-// 
-//	updateBathDensities
-//
-//		Maintains source and sink densities.
-//		This new routine creates a symmetric chemical potential at zero and small delta B.
-//
-//*************************************************************************************************************
 
 void CSimulation::updateBathDensities()
 {
@@ -2172,14 +1180,6 @@ void CSimulation::updateBathDensities()
 	
 }
 
-//*************************************************************************************************************
-// 
-//	AddParticleToBath
-//
-//		Adds particle to source or sink
-//
-//*************************************************************************************************************
-
 bool CSimulation::AddParticleToBath(std::string location_)
 {
 		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
@@ -2200,7 +1200,6 @@ bool CSimulation::AddParticleToBath(std::string location_)
 				xval=xval+a0/2.0;
 			
 				newVortex.set_pos(xval,yval);
-				newVortex.set_TrajectoryNumber(NextTrajectory());
 				vorticesList.push_back(newVortex);
 			}
 			else throw std::runtime_error ("AddParticleToBath() not valid geometry");
@@ -2224,7 +1223,6 @@ bool CSimulation::AddParticleToBath(std::string location_)
 				xval = 2*bathLength + channelLength-xval;
 				
 				newVortex.set_pos(xval,yval);
-				newVortex.set_TrajectoryNumber(NextTrajectory());
 				vorticesList.push_back(newVortex);
 
 			}
@@ -2241,14 +1239,6 @@ bool CSimulation::AddParticleToBath(std::string location_)
 		
 		return true;
 }
-
-//*************************************************************************************************************
-// 
-//	RemoveParticleFromBath
-//
-//		Removes particle from source or sink
-//
-//*************************************************************************************************************
 
 bool CSimulation::RemoveParticleFromBath(std::string location_)
 {
@@ -2269,11 +1259,7 @@ bool CSimulation::RemoveParticleFromBath(std::string location_)
 			
 			
 			
-			if (geometry==channel || geometry == tube || geometry == BSCCO)
-				removalx = 5* a0;
-			else if (geometry==wedge)
-				removalx = etchwedgex0 + 5*a0;
-			else throw std::runtime_error ("RemoveParticleFromBath() not valid geometry");
+			removalx = geom->GetRemovalSourceX();
 				
 			
 			
@@ -2299,9 +1285,7 @@ bool CSimulation::RemoveParticleFromBath(std::string location_)
 		}	
 		else if (location_.compare("sink") == 0)
 		{
-			if (geometry==channel || geometry == tube || geometry == BSCCO || geometry == wedge)
-				removalx = 2*bathLength+channelLength-5*a0;
-			else throw std::runtime_error ("RemoveParticleFromBath() not valid geometry");
+			removalx = geom->GetRemovalSinkX();
 			
 		
 			
@@ -2346,74 +1330,6 @@ bool CSimulation::RemoveParticleFromBath(std::string location_)
 	return false;
 		
 }
-
-void CSimulation::initialisePinsPeriodic()
-{
-	std::cout << "Initialising Pins (periodic)..." << std::endl;
-	
-	std::cout << "   " << pins_file_name << std::endl;
-	
-	std::ifstream myfile (pins_file_name.c_str());
-	
-	systemWidth=12*b0+channelWidth+3*b0/2.0;
-	systemLength=6*a0+channelLength+a0/2.0;
-	
-	if (myfile.is_open()) 
-	{
-		std::cout << "   " << "Initial CE Positions From File" << std::endl;
-		
-		double xval;
-		double yval;
-	
-		while ( myfile.good() )
-		{
-			myfile >> xval;
-			myfile >> yval;
-		
-			CParticle newVortex;
-			newVortex.set_pos(xval,yval);
-			pinsList.push_back(newVortex);
-	
-		}
-		myfile.close();
-	
-	}
-	std::cout << "   initialisePinsPeriodic() created " << pinsList.size() << " 'CE' vortices." << std::endl <<std::endl;
-
-	if (alt_pins_file==false)
-	{
-		std::cout << "   false" << std::endl;
-		firstPin.set_pos(-3*a0,-6*b0-channelOffset);
-		
-	}
-	else
-	{
-		std::cout << "   true" << std::endl;
-		 CParticle newParticle;
-		 newParticle.set_pos(-100.0,-100.0);
-		 
-		 double nx = findClosestPin(newParticle).get_x();
-		 double ny = findClosestPin(newParticle).get_y();
-		 std::cout << "firstPin:" <<  nx << " " << ny << std::endl;
-		 firstPin.set_pos(nx,ny-6*b0);
-		 
-		 std::cout << firstPin.get_x() << " " << firstPin.get_y() << std::endl;
-	}
-	
-	
-	std::cout << "   done initialising pins file." << std::endl;
-}
-
-
-void CSimulation::OutputResults()
-{
-	
-}
-
-
-//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//	CreateGeometry
-//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 GeometryBase * CSimulation::CreateGeometry()
 {
