@@ -26,7 +26,7 @@ class GeometryChannel : public GeometryBase
 				void ReplaceEscapedVortices() const;
         void InitialisePins();
         void InitialiseVortices() const;
-        void AddParticlesForDT() const;
+        void AddParticlesForDT(std::list<CParticle> & vorticesList_) const;
         void WrapSystem() const;
         void InitialiseDisorder() const;
         CParticle GetFirstPin() const;

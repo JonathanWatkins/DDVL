@@ -149,7 +149,7 @@ void GeometryChannel::InitialiseVortices() const
          
 void GeometryChannel::ReplaceEscapedVortices() const
 {
-
+	
  	for (std::list<CParticle>::iterator p = vorticesList->begin();
 			p!=vorticesList->end(); ++p)
 	{
@@ -295,7 +295,7 @@ void GeometryChannel::InitialisePins()
 	
 }
 
-void GeometryChannel::AddParticlesForDT() const
+void GeometryChannel::AddParticlesForDT(std::list<CParticle> & vorticesList_) const
 {
 
 	for(std::list<CParticle>::iterator p=pinsList->begin();
@@ -305,7 +305,7 @@ void GeometryChannel::AddParticlesForDT() const
 					&& p->get_y() > etchchannely0-a0 && p->get_y() < etchchannely1+a0 )
 			{
 				(*p).set_ghost();	
-				vorticesList->push_back(*p);
+				vorticesList_.push_back(*p);
 			}
 		}	
 	

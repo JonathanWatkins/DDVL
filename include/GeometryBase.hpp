@@ -5,7 +5,7 @@
 #define GeometryBaseHPP
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-#include <vector>
+#include <list>
 
 class CParticle;
 
@@ -21,7 +21,7 @@ class GeometryBase
         virtual void ReplaceEscapedVortices() const = 0;
         virtual void InitialisePins() = 0;
         virtual void InitialiseVortices() const = 0;
-        virtual void AddParticlesForDT() const = 0;
+        virtual void AddParticlesForDT(std::list<CParticle> & vorticesList_) const = 0;
         virtual void WrapSystem() const = 0; 
         virtual void InitialiseDisorder() const = 0;
         virtual CParticle GetFirstPin() const = 0;

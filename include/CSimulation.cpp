@@ -175,8 +175,8 @@ void CSimulation::DoStep()
 	fcount++;
 	
 	startclock = clock();
-	//delaunayTriangulation(vorticesList);
-	delVortexList=vorticesList;	
+	delaunayTriangulation(vorticesList);
+	//delVortexList=vorticesList;	
 	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	DTcount++;
 			
@@ -409,7 +409,7 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 	
 	std::list<CLineIDs> lines;
 	
-	geom->AddParticlesForDT();
+	geom->AddParticlesForDT(vorticesList_);
 	
 	/* Define input points. */
 
@@ -1135,7 +1135,7 @@ void CSimulation::updateBathDensities()
 	int sinkCount=0;
 	
 	// relaxation_time
-	double relaxation_time = a0/fabs(get_tAvSAvVelX())/channelWidth*b0/4.0;
+	double relaxation_time = a0/fabs(get_tAvSAvVelX())/channelWidth*b0/2.0;
 	
 	if (t%100==0) std::cout << "relax time: " << relaxation_time << std::endl;
 	
