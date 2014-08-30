@@ -36,7 +36,6 @@
 #define LJType					2
 #define BessLogType			3
 
-#define MAXVFIELDBINS 300
 #define MAXLINKEDLISTSIZE 100
 
 struct SMoves
@@ -75,11 +74,6 @@ private:
 	
 	CParallelEulerIntegrator* integrator;
 	
-	// velocityField	
-	
-	CRunningStats ** vfieldBinVx;//[MAXVFIELDBINS][MAXVFIELDBINS]; // for velocityfield vx
-	CRunningStats ** vfieldBinVy;//[MAXVFIELDBINS][MAXVFIELDBINS]; // for velocityfield vy
-	
 	// Object status
 	bool running;
 	bool paused;
@@ -94,26 +88,14 @@ private:
 	int seedtime;
 	double temp;
 	std::string jobnum;
-	bool drawCoordinateGrid;
 	bool calcTrajectories;
-	bool showParticleTracker;
-
+	
 	std::string jobtag;
-	
-	// anealing parameters
-	bool aneal;
-	double anealTmax;
-	int anealCycleTime;
-	int anealNumCycles;
-	double annealing_T;
-	int annealing_endtime;
-	
 	
 	// Size of Lorentz force
 	double lorentzForce;
 	
 	bool initialised;
-	// geometry
 	int geometry;
 	
 	double a0;
@@ -134,8 +116,6 @@ private:
 
 	CParticle firstPin;
 	
-	CParticle viewpoint;
-
 	double etchsourcex0, etchsourcey0, etchsourcex1, etchsourcey1;
 	double etchchannelx0, etchchannely0, etchchannelx1, etchchannely1;
 	double etchsinkx0, etchsinky0, etchsinkx1, etchsinky1;
@@ -187,8 +167,6 @@ private:
 	double sink_rhov;
 	int ratioOfDefects;
 	
-	
-	
 	// Physical constants
 	double pi;
 	double Phi;
@@ -197,8 +175,8 @@ private:
 	double kB;
 	double mu0;
 	double lambda;
-  	double f0;
-  	double f0bath;
+  double f0;
+  double f0bath;
 	double Ap;
 	double f0_rcut_correction;
 	double f0bath_rcut_correction;
@@ -212,7 +190,6 @@ private:
 	int t;
 	double dt;
 	double tau;
-	int drawInterval;  // Must be a product of triangulationInterval
 	int triangulationInterval;
 	int framedataInterval;
 	int outputType;
@@ -228,15 +205,11 @@ private:
 	double ftime;
 	clock_t timer;
 	double cellSize;
-	double vfieldBinSize;
 	bool flat_channel_ends;
 	bool reflected_channel_ends;
 	int lastchangedSource;
 	int lastchangedSink;		
 	int vvForce;
-	bool annealing;
-	int annealing_time;
-	double annealing_factor;
 	
 	bool applyBathVelocities;
 	bool applyStiffBath;
@@ -292,20 +265,7 @@ public:
 	
 	CSimulation();
 	
-	~CSimulation()
-	{
-		//clean up arrays
-		for(int i = 0; i < MAXVFIELDBINS; ++i)
-		{
-			delete [] vfieldBinVx[i];
-			delete [] vfieldBinVy[i];
-		
-		}
-		delete [] vfieldBinVx;
-		delete [] vfieldBinVy;
-		
-		
-	};
+	~CSimulation() {};
 	
 	
 	// initilise from Job Header
@@ -349,8 +309,6 @@ public:
 	double get_av_force_d() const { return av_force_d.get_mean(); };	
 	
 	double get_av_force_t() const { return av_force_t.get_mean(); };	
-	
-	CParticle get_viewpoint() const {return viewpoint; };
 	
 	double get_a0() const { 	return a0; }
 
@@ -432,10 +390,6 @@ public:
 
 	double get_Ap() const { return Ap; }
 
-	bool get_drawCoordinateGrid() const { return drawCoordinateGrid; }
-
-	bool get_showParticleTracker() const { return showParticleTracker; }
-
 	int get_runtype() const { return runtype; }
 
 	double get_zoom() const { return zoom; }
@@ -507,26 +461,6 @@ public:
 		
 	//double get_tAvSAvVelYScaled() const;
 	
-	bool get_drawSixFold() const;
-	
-	bool get_draw() const; // returns true is draw this step. 
-	
-	void pause_simulation();
-	
-	void unpause_simulation();
-		
-	void end_simulation();
-	
-	void next_t();
-	
-	void zoom_in();
-	
-	void zoom_out();
-	
-	void pan_left();
-	
-	void pan_right();
-	
 	void calcBfield();
 
 private:
@@ -535,12 +469,6 @@ private:
 	
 	void OutputResults();
 	
-	void calculateForces_old();
-	
-	void check_for_start();
-
-	void check_for_end();
-
 	void initialise_files();
 	
 	void initialisePins();
@@ -571,8 +499,6 @@ private:
 	
 	void read_PinsList();
 	
-	void readSingleDataStep();
-	
 	void calculateFinishTime();
 	
 	bool inSystem(double x_, double y_);
@@ -589,12 +515,6 @@ private:
 	void iniread_JobHeader();
 	
 	void configure_simulation();
-	
-	// force functions
-	
-	int what_ivfieldBin(const CParticle &a_) const;
-	
-	int what_jvfieldBin(const CParticle &a_) const;
 	
 	double calcSinkB();
 		

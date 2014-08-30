@@ -44,15 +44,9 @@ bool xSort (CParticle lhs_,CParticle rhs_)
 	return (lhs_.get_x()<rhs_.get_x());
 }
 
-bool CSimulation::get_drawSixFold() const { return !triangulateReadRun; }
-
 double CSimulation::get_M2Average() const { return M2Sum/(double)t; }
 
 double CSimulation::get_M2FullAverage() const {	return M2FullSum/(double)t; }
-
-void CSimulation::pause_simulation() { paused=true; }
-
-void CSimulation::unpause_simulation() { paused=false; }
 
 double CSimulation::get_tAvSAvVelY() const { return avYVel/(double)t; } //Returns time and space average of vely of channel vortices
 
@@ -89,17 +83,14 @@ CSimulation::CSimulation()
 	source_rhov=1;
 	sink_rhov=1;	
 	cellSize=0;
-	vfieldBinSize=0;
 	binsize=0;
 	Nv=0;
 	Nmis=0;
 	thermostat="";
 	lorentzForce=0;
 	jobtag="";
-	drawCoordinateGrid=false;
 	triangulateReadRun=true;
 	calcTrajectories=false;
-	showParticleTracker=false;
 	Ap=1;
 	DTcount=0;
 	fcount=0;
@@ -143,28 +134,12 @@ CSimulation::CSimulation()
 	epsilon=0;
 	sigma=0;
 	vvForce=0;
-	annealing=false;
-	annealing_time=0;
-	annealing_factor=0;
-	annealing_endtime=0;
-	annealing_T=0;
 	lastchangedSource=0;
 	lastchangedSink=0;
 	frame_force_t = 0;
 	frame_force_d = 0;
 	
-	vfieldBinVx = new CRunningStats*[MAXVFIELDBINS];
-	for(int i = 0; i < MAXVFIELDBINS; ++i)
-	{
-		vfieldBinVx[i] = new CRunningStats[MAXVFIELDBINS];
-	}
-	
-	vfieldBinVy = new CRunningStats*[MAXVFIELDBINS];
-	for(int i = 0; i < MAXVFIELDBINS; ++i)
-	{
-		vfieldBinVy[i] = new CRunningStats[MAXVFIELDBINS];
-	}
-	//version.set_versionStr("2.2.4");	
+	version.set_versionStr("1.0.0");	
 
 }
 
@@ -342,7 +317,6 @@ void CSimulation::initialisePins()
 	systemLength=6*locala0+2*bathLength+channelLength+locala0/2.0;
 	
 	firstPin.set_pos(-3*a0,-6*localb0-channelOffset);
-	viewpoint.set_pos(-3*a0,-6*localb0-channelOffset);
 	
 	
 	if (alt_pins_file==true)
@@ -466,15 +440,11 @@ void CSimulation::iniwrite_jobheader()
 	<< "jobnum=" << jobnum << std::endl
 	<< std::endl;
 	
-	std::cout << "here" << std::endl;
 	*fileOutputter.getFS("guiheader") <<"[ReadableBatchOptions]\n"
 	<< "runtype=0" << std::endl
 	<< "geometry=";
 	if(geometry==channel) *fileOutputter.getFS("guiheader") << "channel";
 	else if(geometry==tube) *fileOutputter.getFS("guiheader") << "tube";
-	else if(geometry==wedge) *fileOutputter.getFS("guiheader") << "wedge";
-	else if(geometry==periodic) *fileOutputter.getFS("guiheader") << "periodic";
-	else if(geometry==BSCCO) *fileOutputter.getFS("guiheader") << "BSCCO";
 	
 	
 	*fileOutputter.getFS("guiheader") << std::endl;
@@ -485,10 +455,7 @@ void CSimulation::iniwrite_jobheader()
 		<< "bathLength="<< bathLength/a0 << std::endl
 		<< "bathWidth="<< bathWidth/b0 << std::endl;
 	}
-	else if (geometry==periodic)
-	{
-		*fileOutputter.getFS("guiheader") << "Bfield="<< Bfield << std::endl;
-	}
+	
 	*fileOutputter.getFS("guiheader") << "channelLength="<< channelLength/a0 << std::endl
 	<< "channelWidth="<< channelWidth/b0 << std::endl
 	<< "simulationTime="<< simulation_time << std::endl
@@ -505,17 +472,14 @@ void CSimulation::iniwrite_jobheader()
 	*fileOutputter.getFS("guiheader") <<"[BatchOptions]\n"
 	<< "runtype=0" << std::endl
 	<< "geometry="<< geometry << std::endl;
-	if(geometry==channel || geometry==tube || geometry==wedge || geometry==BSCCO)
+	if(geometry==channel || geometry==tube)
 	{
 		*fileOutputter.getFS("guiheader")<< "sourceBfield="<< sourceBfield << std::endl
 		<< "sinkBfield="<< sinkBfield << std::endl
 		<< "bathLength="<< bathLength << std::endl
 		<< "bathWidth="<< bathWidth << std::endl;
 	}
-	else if (geometry==periodic)
-	{
-		*fileOutputter.getFS("guiheader") << "Bfield="<< Bfield << std::endl;
-	}
+	
 	*fileOutputter.getFS("guiheader") << "channelLength="<< channelLength << std::endl
 	<< "channelWidth="<< channelWidth << std::endl
 	<< "simulationTime="<< simulation_time << std::endl
@@ -590,7 +554,6 @@ void CSimulation::iniwrite_jobheader()
 	*fileOutputter.getFS("guiheader") << "[GeneralParameters]\n"
 	<< "a0=" << a0 << std::endl
 	<< "binSize=" << binsize << std::endl
-	<< "vfieldBinSize=" << vfieldBinSize << std::endl
 	<< "cellSize=" << cellSize << std::endl
 	<< "pi=" << pi << std::endl 
 	<< "Phi=" << Phi << std::endl 
@@ -628,7 +591,7 @@ void CSimulation::iniwrite_jobheader()
 	<< "applyBounceBack="<< applyBounceBack << std::endl
 	<< std::endl;
 	
-	*fileOutputter.getFS("guiheader") << "[meshworks]\n"
+	*fileOutputter.getFS("guiheader") << "[DDVL]\n"
 	<< "version=" << version.get_versionStr() << std::endl
 	<< std::endl;
  
@@ -756,31 +719,21 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 		
 	free(faces);
 	
-	
-	
-	
 	// check delLinesList for dupilcates
-	//std::cout << "lines: " << lines.size() << std::endl;
 	lines.sort();
-	//std::cout << "lines sort: " << lines.size() << std::endl;
 	lines.unique();
-	//std::cout << "lines unique: " << lines.size() << std::endl;
 	
 	for (std::list<CLineIDs>::iterator p = lines.begin();
 		p!=lines.end(); ++p)
 	{
-		//std::cout << p->id1 <<  "   " << p->id2 << std::endl;
 	
-		
 		CDelLine newDelLine;
 		newDelLine.set_points(vorticesVector[p->id1].get_x(),vorticesVector[p->id1].get_y(),vorticesVector[p->id2].get_x(),vorticesVector[p->id2].get_y());
 		delLinesList.push_back(newDelLine);	
-		// work out coord num
+	
 		vorticesVector[p->id1].coordPlusOne();
 		vorticesVector[p->id2].coordPlusOne();
 	}
-	
-	
 	
 	std::copy( vorticesVector.begin(), vorticesVector.end(), std::back_inserter( delVortexList ) );
   
@@ -844,8 +797,6 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 			if (removed==false) { ++p; }
 		}
 	}
-	
-	//std::cout << "Triangulation finished" << std::endl;
 	
 }
 
@@ -1158,7 +1109,6 @@ void CSimulation::initialisePinsTube()
 	systemLength=6*locala0+2*bathLength+channelLength+locala0/2.0;
 	
 	firstPin.set_pos(-3*a0,-10*localb0-channelOffset);
-	viewpoint.set_pos(-3*a0,-10*localb0-channelOffset);
 	
 	double yPos=firstPin.get_y();
 	
@@ -1291,25 +1241,15 @@ void CSimulation::iniread_JobBatchFile()
 	
 	// simulation variables
 	cellSize=pt.get<double>("GeneralParameters.cellSize");
-	vfieldBinSize=pt.get<double>("GeneralParameters.vfieldBinSize");
 	
 	dt=pt.get<double>("GeneralParameters.dt");
 	tau=pt.get<double>("GeneralParameters.tau");
-	drawInterval=pt.get<int>("GeneralParameters.drawInterval");
 	triangulationInterval=pt.get<int>("GeneralParameters.triangulationInterval");
 	framedataInterval=pt.get<int>("GeneralParameters.framedataInterval");
-	drawCoordinateGrid=pt.get<bool>("GeneralParameters.drawCoordinateGrid");
 	calcTrajectories=pt.get<bool>("GeneralParameters.calcTrajectories");
-	showParticleTracker=pt.get<bool>("GeneralParameters.showParticleTracker");
 	
 	
 	thermostat=pt.get<std::string>("GeneralParameters.thermostat");
-	
-	annealing=pt.get<bool>("Annealing.annealing");
-	annealing_time=pt.get<int>("Annealing.annealingtime");
-	annealing_factor=pt.get<double>("Annealing.annealingfactor");
-	annealing_endtime=pt.get<int>("Annealing.annealingendtime");
-	annealing_T=pt.get<double>("Annealing.annealingT");
 	
 	alt_pos_file = pt.get<bool>("InputData.altPosFile");
 	if (alt_pos_file == true)
@@ -1824,24 +1764,6 @@ void CSimulation::OutputFinalVortexPositions()
 		}
 		
 	}
-}
-
-int CSimulation::what_ivfieldBin(const CParticle & a_) const
-{
-	//uses midx for velocity vector position
-	double i= floor((a_.get_midx()-firstPin.get_x())/(vfieldBinSize*a0));
-	if (i<0) return 0;
-	else return i;
-
-}
-
-int CSimulation::what_jvfieldBin(const CParticle & a_) const
-{
-	//uses midy for velocity vector position
-	double j= floor((a_.get_midy()-(firstPin.get_y()+b0/2))/(vfieldBinSize*b0));
-	if (j<0) return 0;
-	else return j;
-
 }
 
 double CSimulation::calcSinkB()
@@ -2569,7 +2491,6 @@ void CSimulation::initialisePinsPeriodic()
 	{
 		std::cout << "   false" << std::endl;
 		firstPin.set_pos(-3*a0,-6*b0-channelOffset);
-		viewpoint.set_pos(-3*a0,-6*b0-channelOffset);
 		
 	}
 	else
@@ -2582,7 +2503,6 @@ void CSimulation::initialisePinsPeriodic()
 		 double ny = findClosestPin(newParticle).get_y();
 		 std::cout << "firstPin:" <<  nx << " " << ny << std::endl;
 		 firstPin.set_pos(nx,ny-6*b0);
-		 viewpoint.set_pos(nx,ny-6*b0);
 		 
 		 std::cout << firstPin.get_x() << " " << firstPin.get_y() << std::endl;
 	}
