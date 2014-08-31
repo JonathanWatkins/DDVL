@@ -7,15 +7,13 @@
 #include "CParticle.hpp"
 #include "CDelLine.hpp"
 #include "CDelTriangle.hpp"
-#include "CCoord.hpp"
 #include "CBin.hpp"
-#include "CPin.hpp"
 #include "CLineIDs.hpp"
 #include "CVersion.hpp"
 #include "CCell.hpp"
 #include "CRunningStats.hpp"
 #include "delaunay.hpp"
-#include "Utilities.hpp"
+#include "rv_library.hpp"
 
 // GeometryBase Types
 #include "GeometryChannel.hpp"
@@ -38,7 +36,7 @@
 #include <iomanip>
 
 // Boost libraries
-#include <boost/ptr_container/ptr_list.hpp>
+//#include <boost/ptr_container/ptr_list.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
@@ -58,6 +56,14 @@ double CSimulation::get_tAvSAvVelX() const { return avXVel/(double)t; } // Retur
 
 CParticle CSimulation::get_firstPin() const { return geom->GetFirstPin(); }
 
+double CSimulation::get_channelLength() const {	return geom->GetChannelLength(); }
+
+double CSimulation::get_channelWidth() const { return geom->GetChannelWidth(); }
+
+double CSimulation::get_bathLength() const { return geom->GetBathLength(); }
+	
+double CSimulation::get_bathWidth() const { return geom->GetBathWidth(); }
+
 CSimulation::CSimulation()
 {
 	startTime=clock();
@@ -67,7 +73,6 @@ CSimulation::CSimulation()
 	running = false;
 	initialised=false;
 	simulation_time=1;
-	simulation_initialised = false;
 	paused=false;
 	M2=0;
 	M2Full=0;
@@ -75,17 +80,7 @@ CSimulation::CSimulation()
 	M2FullSum=0;
 	avXVel=0;
 	avYVel=0;
-	bathLength=0;
-	bathWidth=0;
-	channelLength=0;
-	channelWidth=0;
-	sourceBfield=0;
-	sinkBfield=0;
 	framedataInterval=5;
-	original_T=0;
-	rhov=1;
-	source_rhov=1;
-	sink_rhov=1;	
 	cellSize=0;
 	binsize=0;
 	Nv=0;
@@ -93,16 +88,13 @@ CSimulation::CSimulation()
 	thermostat="";
 	lorentzForce=0;
 	jobtag="";
-	triangulateReadRun=true;
-	calcTrajectories=false;
+
 	Ap=1;
 	DTcount=0;
 	fcount=0;
 	DTtime=0;
 	ftime=0;
-	zoom=1;
-	flat_channel_ends=false;
-	reflected_channel_ends=false;
+
 	applyBathVelocities=false;
 	applyStiffBath=false;
 	applyBounceBack=false;
@@ -114,18 +106,14 @@ CSimulation::CSimulation()
 	f0_rcut_correction=0;
 	f0bath_rcut_correction=0;
 	
-
 	Av=0;
 	Rv=0;
 	epsilon=0;
 	sigma=0;
 	vvForce=0;
-	lastchangedSource=0;
-	lastchangedSink=0;
+
 	frame_force_t = 0;
 	frame_force_d = 0;
-	
-	
 	
 	version.set_versionStr("1.0.0");	
 
@@ -162,7 +150,7 @@ void CSimulation::DoStep()
 {
 	if (0==t%100) std::cout << "t: " << t << std::endl;
 	
-	calculateFinishTime();
+	CalculateFinishTime();
 	
 	geom->ReplaceEscapedVortices();	
 		
@@ -175,13 +163,14 @@ void CSimulation::DoStep()
 	fcount++;
 	
 	startclock = clock();
-	delaunayTriangulation(vorticesList);
+	DelaunayTriangulation(vorticesList);
 	//delVortexList=vorticesList;	
 	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	DTcount++;
 			
-	calculateAvVel();
-	updateBathDensities();
+	CalculateAvVel();
+	
+	geom->UpdateBathDensities();
 	
 }
 
@@ -190,30 +179,27 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	
 	jobBatchFileLocation=jobBatchFileLocation_;
 	
-	iniread_JobBatchFile();
+	ReadJobBatchFile();
 	
 	// make jobnum from seedtime and jobtag from jobbatch file	
 	std::stringstream oss;
 	oss << "job" << seedtime << "-" << jobtag; 
-	
 	jobnum=oss.str();
 	std::cout << "JobNum: " << jobnum << std::endl << std::endl;
 		
 	// run initial functions
 	
-	initialise_files();
+	InitialiseFiles();
 	
 	geom = CreateGeometry();
-			
+	
 	geom->InitialiseVortices();
 	
 	geom->InitialisePins();
 	
 	geom->InitialiseDisorder();
 	
-	// set some variables
-	
-	vortexSize=0.2*get_a0();
+	// calculate parameters
 	
 	A=2*kB*temp/eta;
 	
@@ -223,16 +209,16 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	
 	std::cout << "firstPin " << geom->GetFirstPin().get_x() << ", " << geom->GetFirstPin().get_y() << std::endl;
 		
-	iniwrite_jobheader();
+	CopyJobBatchFile();
 	
-	std::cout << "   Simulation initialised.\n\n";
+	std::cout << "Simulation initialised.\n\n";
 		
 	initialised = true;
 	
 	return 0;
 }
 
-void CSimulation::initialise_files()
+void CSimulation::InitialiseFiles()
 {
 	
 	// make new directory for data
@@ -240,9 +226,7 @@ void CSimulation::initialise_files()
 	fileOutputter.setJobDirectory(jobnum);
 	
 	// add files to outputter
-	
-	//fileOutputter.addFileStream("forceterms", "forceterms.txt");
-	
+		
 	if (outputType==0)  // none
 	{
 		std::cout << "   No results files...\n\n";
@@ -251,7 +235,7 @@ void CSimulation::initialise_files()
 	
 	if (outputType==1) // positions and velocity, final positions
 	{
-		fileOutputter.addFileStream("guiheader", "jobheader.ini");
+		fileOutputter.addFileStream("jobheader", "jobheader.ini");
 		fileOutputter.addFileStream("posfile", "posdata.txt");
 		fileOutputter.addFileStream("guifile", "guidata.dat");
 		fileOutputter.addFileStream("trajfile", "trajectories.txt");
@@ -283,126 +267,21 @@ void CSimulation::OutputSimulationTimes()
 	
 }
 
-void CSimulation::iniwrite_jobheader()
+void CSimulation::CopyJobBatchFile()
 {
-	if (outputType==0)
-		return;
-	
-	*(fileOutputter.getFS("guiheader")) << "[Overview]\n"
-	<< "jobnum=" << jobnum << std::endl
-	<< std::endl;
-	
-	*fileOutputter.getFS("guiheader") <<"[ReadableBatchOptions]\n"
-	<< "runtype=0" << std::endl
-	<< "geometry=";
-	if(geometry==channel) *fileOutputter.getFS("guiheader") << "channel";
-	else if(geometry==tube) *fileOutputter.getFS("guiheader") << "tube";
-	
-	
-	*fileOutputter.getFS("guiheader") << std::endl;
-	if(geometry==channel || geometry==tube || geometry==wedge || geometry==BSCCO)
-	{
-		*fileOutputter.getFS("guiheader")<< "sourceBfield="<< sourceBfield << std::endl
-		<< "sinkBfield="<< sinkBfield << std::endl
-		<< "bathLength="<< bathLength/a0 << std::endl
-		<< "bathWidth="<< bathWidth/b0 << std::endl;
-	}
-	
-	*fileOutputter.getFS("guiheader") << "channelLength="<< channelLength/a0 << std::endl
-	<< "channelWidth="<< channelWidth/b0 << std::endl
-	<< "simulationTime="<< simulation_time << std::endl
-	<< "temp=" << original_T << std::endl
-	<< "lorentzForce=" << lorentzForce << std::endl
-	<< std::endl;
-	
-	*fileOutputter.getFS("guiheader") <<"[InputData]\n"
-	<< "altPosFile=" << alt_pos_file << std::endl
-	<< "altPosFileName="<< pos_file_name << std::endl
-	<< std::endl;
-	
-
-	*fileOutputter.getFS("guiheader") <<"[BatchOptions]\n"
-	<< "runtype=0" << std::endl
-	<< "geometry="<< geometry << std::endl;
-	if(geometry==channel || geometry==tube)
-	{
-		*fileOutputter.getFS("guiheader")<< "sourceBfield="<< sourceBfield << std::endl
-		<< "sinkBfield="<< sinkBfield << std::endl
-		<< "bathLength="<< bathLength << std::endl
-		<< "bathWidth="<< bathWidth << std::endl;
-	}
-	
-	*fileOutputter.getFS("guiheader") << "channelLength="<< channelLength << std::endl
-	<< "channelWidth="<< channelWidth << std::endl
-	<< "simulationTime="<< simulation_time << std::endl
-	<< "temp=" << original_T << std::endl
-	<< "LorentzForce=" << lorentzForce << std::endl
-	
-	<< std::endl;
-	
-	*fileOutputter.getFS("guiheader") << "[Job]\n"
-	<< "jobtag=" << jobtag << std::endl
-	<< std::endl;
-
-
-	*fileOutputter.getFS("guiheader") <<"[ConfigVariables]\n"
-	<< "f0=" << f0 << std::endl
-	
-	<< std::endl;
-		
-	*fileOutputter.getFS("guiheader") << "[DrawingVariables]\n"
-	<< "firstPinx=" << geom->GetFirstPin().get_x() << std::endl
-	<< "firstPiny=" << geom->GetFirstPin().get_y() << std::endl
-	<< std::endl;
-
-	*fileOutputter.getFS("guiheader") << "[GeneralParameters]\n"
-	<< "a0=" << a0 << std::endl
-	<< "binSize=" << binsize << std::endl
-	<< "cellSize=" << cellSize << std::endl
-	<< "pi=" << pi << std::endl 
-	<< "Phi=" << Phi << std::endl 
-	<< "forceRange=" << forceRange << std::endl 
-	<< "eta=" << eta << std::endl 
-	<< "kB=" << kB << std::endl 
-	<< "mu0=" << mu0 << std::endl 
-	<< "lambda=" << lambda << std::endl 
-	<< "Ap=" << Ap << std::endl 
-	<< "dt=" << dt << std::endl 
-	<< "tau=" << tau << std::endl 
-	<< "drawInterval=" << framedataInterval << std::endl 
-	<< "triangulationInterval=" << triangulationInterval << std::endl
-	<< "thermostat=" << thermostat << std::endl
-	<< "disorderDensity=" << disorderDensity << std::endl
-	<< "disorderStrength=" << disorderStrength << std::endl
-	<< "disorderRange=" << disorderRange << std::endl
-	<< "vvForce=" << vvForce << std::endl
-	<< "Av=" << Av << std::endl
-	<< "Rv=" << Rv << std::endl
-	<< "epsilon=" << epsilon << std::endl
-	<< "sigma=" << sigma << std::endl
-	
-	
-	<< std::endl;
-	
-	*fileOutputter.getFS("guiheader") << "[BathParameters]\n"
-	<< "applyBathVelocities="<< applyBathVelocities << std::endl
-	<< "applyStiffBath="<< applyStiffBath << std::endl
-	<< "flatChannelEnds="<< flat_channel_ends << std::endl
-	<< "reflectedChannelEnds="<< flat_channel_ends << std::endl
-	<< std::endl;
-	
-	*fileOutputter.getFS("guiheader") << "[WallParameters]\n"
-	<< "applyBounceBack="<< applyBounceBack << std::endl
-	<< std::endl;
-	
-	*fileOutputter.getFS("guiheader") << "[DDVL]\n"
-	<< "version=" << version.get_versionStr() << std::endl
-	<< std::endl;
- 
+	// copy jobheader to job directory and change name to jobheader.ini
+	std::ifstream f1(jobBatchFileLocation, std::fstream::binary);
   
+  // this is a hack
+  std::ostringstream oss;
+	oss << jobnum << "//jobheader.ini";
+  std::ofstream f2(oss.str().c_str(), std::fstream::trunc|std::fstream::binary);
+  f2 << f1.rdbuf();
+	// this is a hack
+ 
 }
 
-void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
+void CSimulation::DelaunayTriangulation( std::list<CParticle> vorticesList_)
 {
 	delVortexList.clear();
 	delLinesList.clear();
@@ -503,66 +382,9 @@ void CSimulation::delaunayTriangulation( std::list<CParticle> vorticesList_)
 	
 	std::list<CDelLine>::iterator p = delLinesList.begin();
   
-	/*if (geometry==channel) 
-	{
-		while (p != delLinesList.end())
-		{
-			bool removed=false;
-		
-			
-			if ((p->get_x1() < bathLength && p->get_y1() < 0  &&  p->get_x2() > bathLength)
-			|| (p->get_x2() < bathLength && p->get_y2() < 0  &&  p->get_x1() > bathLength))
-			{
-				p=delLinesList.erase(p);
-				removed=true;	
-			} 
-			
-			if ((p->get_x1() < bathLength && p->get_y1() > channelWidth+b0  &&  p->get_x2() > bathLength)
-			|| (p->get_x2() < bathLength && p->get_y2() > channelWidth+b0  &&  p->get_x1() > bathLength)) 
-			{
-				p=delLinesList.erase(p);
-				removed=true;	
-			} 
-			
-			if ((p->get_x1() > bathLength+channelLength && p->get_y1() < 0  &&  p->get_x2() < bathLength+channelLength)
-			|| (p->get_x2() > bathLength+channelLength && p->get_y2() < 0  &&  p->get_x1() < bathLength+channelLength)) 
-			{
-				p=delLinesList.erase(p);
-				removed=true;	
-			} 
-			
-			if ((p->get_x1() > bathLength+channelLength && p->get_y1() > channelWidth+b0  &&  p->get_x2() < bathLength+channelLength)
-			|| (p->get_x2() > bathLength+channelLength && p->get_y2() > channelWidth+b0  &&  p->get_x1() < bathLength+channelLength)) 
-			{
-				p=delLinesList.erase(p);
-				removed=true;	
-			} 
-			
-		
-			if (removed==false) { ++p; }
-		}
-	}
-	else if (geometry==tube)
-	{
-		while (p != delLinesList.end())
-		{
-			bool removed=false;
-		
-			
-			if (p->get_y1() <= removetopchannely || p->get_y2() <= removetopchannely ||
-				p->get_y1() >=removebottomchannely || p->get_y2() >= removebottomchannely)
-			{
-				p=delLinesList.erase(p);
-				removed=true;	
-			} 
-		
-			if (removed==false) { ++p; }
-		}
-	}*/
-	
 }
 
-void CSimulation::iniread_JobBatchFile() 
+void CSimulation::ReadJobBatchFile() 
 {
 	std::cout << "Loading job batch file..." << std::endl;
 	std::cout << "   from " << jobBatchFileLocation << std::endl;
@@ -591,8 +413,7 @@ void CSimulation::iniread_JobBatchFile()
 	tau=pt.get<double>("GeneralParameters.tau");
 	triangulationInterval=pt.get<int>("GeneralParameters.triangulationInterval");
 	framedataInterval=pt.get<int>("GeneralParameters.framedataInterval");
-	calcTrajectories=pt.get<bool>("GeneralParameters.calcTrajectories");
-	
+		
 	
 	thermostat=pt.get<std::string>("GeneralParameters.thermostat");
 	
@@ -613,21 +434,11 @@ void CSimulation::iniread_JobBatchFile()
 			
 	// interactions
 	vvForce=pt.get<double>("Interactions.vvForce");
-	if(vvForce==GaussianType)
-	{
-		Av=pt.get<double>("Interactions.Av");
-		Rv=pt.get<double>("Interactions.Rv");
-	}
-	else if (vvForce==BesselType)
+	if (vvForce==BesselType)
 	{
 		Phi=pt.get<double>("Interactions.Phi");
 		//mu0=pt.get<double>("Interactions.mu0");
 		lambda=pt.get<double>("Interactions.lambda");	
-	}
-	else if (vvForce==LJType)
-	{
-		epsilon=pt.get<double>("Interactions.epsilon");
-		sigma=pt.get<double>("Interactions.sigma");
 	}
 	else if (vvForce==BessLogType)
 	{
@@ -641,100 +452,12 @@ void CSimulation::iniread_JobBatchFile()
 	
 	// Job header section
 	
-	runtype=pt.get<int>("Header.runtype");
 	outputType=pt.get<int>("Header.outputType");
 	
-	channelLength=pt.get<double>("Header.channelLength")*a0;
-	channelWidth=pt.get<double>("Header.channelWidth")*b0;
-		
-	
-	if (vvForce==BesselType || vvForce==BessLogType)
-	{	
-		if (geometry==channel)
-		{
-			sourceBfield=pt.get<double>("Header.sourceBfield");
-			sinkBfield=pt.get<double>("Header.sinkBfield");
-			bathLength=pt.get<double>("Header.bathLength")*a0;
-			bathWidth=pt.get<double>("Header.bathWidth")*b0;
-		}
-		else if (geometry==tube)
-		{
-			sourceBfield=pt.get<double>("Header.sourceBfield");
-			sinkBfield=pt.get<double>("Header.sinkBfield");
-			bathLength=pt.get<double>("Header.bathLength")*a0;
-			bathWidth=channelWidth;
-		}
-		else if (geometry==periodic)
-		{
-			Bfield=pt.get<double>("Header.Bfield");
-		}
-		else
-		{
-			std::ostringstream oss;
-			oss.str("");
-			oss <<"iniread_JobBatchFile() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-			throw std::runtime_error(oss.str());
-		}
-	}
-	else if (vvForce==GaussianType)
-	{
-		if (geometry==channel)
-		{
-			sourceBfield=pt.get<double>("Header.sourcerhov");
-			sinkBfield=pt.get<double>("Header.sinkrhov");
-			bathLength=pt.get<double>("Header.bathLength")*a0;
-			bathWidth=pt.get<double>("Header.bathWidth")*b0;
-		}
-		else if (geometry==tube)
-		{
-			sourceBfield=pt.get<double>("Header.sourcerhov");
-			sinkBfield=pt.get<double>("Header.sinkrhov");
-			bathLength=pt.get<double>("Header.bathLength")*a0;
-			bathWidth=channelWidth;
-		}
-		else
-		{
-			std::ostringstream oss;
-			oss.str("");
-			oss <<"iniread_JobBatchFile() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-			throw std::runtime_error(oss.str());
-		}
-	}
-	else if (vvForce==LJType)
-	{
-		if (geometry==channel)
-		{
-			source_rhov=pt.get<double>("Header.sourcerhov");
-			sink_rhov=pt.get<double>("Header.sinkrhov");
-			bathLength=pt.get<double>("Header.bathLength")*a0;
-			bathWidth=pt.get<double>("Header.bathWidth")*b0;
-		}
-		else if (geometry==tube)
-		{
-			source_rhov=pt.get<double>("Header.sourcerhov");
-			sink_rhov=pt.get<double>("Header.sinkrhov");
-			bathLength=pt.get<double>("Header.bathLength")*a0;
-			bathWidth=channelWidth;
-		}
-		else
-		{
-			std::ostringstream oss;
-			oss.str("");
-			oss <<"iniread_JobBatchFile() Cannot run with geometry: " << geometry << " and vvForce: " << vvForce << std::endl;
-			throw std::runtime_error(oss.str());
-		}
-	}
-	std::cout << "   sourceBfield: " << sourceBfield << std::endl; 
-	std::cout << "   sinkBfield: " << sinkBfield << std::endl; 
-	
-	std::cout << "   source_rhov: " << source_rhov << std::endl; 
-	std::cout << "   sink_rhov: " << sink_rhov << std::endl; 
-	
-		
 	simulation_time=pt.get<double>("Header.simulationTime");
 	lorentzForce=pt.get<double>("Header.lorentzForce");  
   
-  	original_T=pt.get<double>("Header.temp");  
+  temp=pt.get<double>("Header.temp");  
 	
 	jobtag=pt.get<std::string>("Job.jobtag");  
 	
@@ -742,7 +465,7 @@ void CSimulation::iniread_JobBatchFile()
 	
 }
 
-void CSimulation::calculateFinishTime()
+void CSimulation::CalculateFinishTime()
 {
 	
 	if (0==t%1000)
@@ -753,18 +476,14 @@ void CSimulation::calculateFinishTime()
 
 		double hours = floor(MonitorPeriod*(simulation_time-t)/1000.0/60.0/60.0);
 		double minutes = (int)(MonitorPeriod*(simulation_time-t)/1000.0/60.0)%60;
-		std::ostringstream oss;
-		oss << "Estimated finish time : " << hours << "h " << minutes << "m";
-		finishTimeStr = oss.str();
-	
-		std::cout << finishTimeStr << std::endl;
+		double seconds = (int)(MonitorPeriod*(simulation_time-t)/1000.0)%60;
+		std::cout << "Estimated finish time : " << hours << "h " << minutes << "m " << seconds << "s" <<  std::endl;
+		
 	}
-
-	
 	
 }
 
-void CSimulation::calculateAvVel()
+void CSimulation::CalculateAvVel()
 {
 	/*
 	 *   calculates the space and time average of the x and y velocities of the channel vortices.
@@ -782,7 +501,7 @@ void CSimulation::calculateAvVel()
 	for(std::list<CParticle>::iterator p = vorticesList.begin();
 	    p != vorticesList.end(); p++)
 	{
-		if (p->get_x()>=bathLength && p->get_x() <=bathLength+channelLength)
+		if (p->get_x()>=get_bathLength() && p->get_x() <=get_bathLength()+get_channelLength())
 		{
 			count++;
 			spaceSumX=spaceSumX+p->get_velx();
@@ -796,7 +515,7 @@ void CSimulation::calculateAvVel()
 	
 	avXVel=avXVel+spaceSumX/(double)count;
 	avYVel=avYVel+spaceSumY/(double)count;
-	if (outputType==1 || outputType==2) *fileOutputter.getFS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << get_tAvSAvVelX() << " " << get_tAvSAvVelY() << std::endl;
+	if (outputType==1) *fileOutputter.getFS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << get_tAvSAvVelX() << " " << get_tAvSAvVelY() << std::endl;
 	
 	
 }
@@ -819,217 +538,6 @@ void CSimulation::OutputFinalVortexPositions()
 		}
 		
 	}
-}
-
-double CSimulation::calcSinkB()
-{
-	
-	normaliseSinkStr = "";
-	
-	double aaverage=0;
-	int numa=0;
-	for (std::list<CDelLine>::iterator p = delLinesList.begin();
-				p!=delLinesList.end(); ++p) {
-		double midy = (p->get_y1() + p->get_y2())/2.0;
-		double midx = (p->get_x1() + p->get_x2())/2.0;
-						
-		if ( (midx > bathLength+channelLength-binsize/2.0 && midx<bathLength+channelLength+binsize/2.0) &&
-				(midy>0 && midy<channelWidth)) {
-			//continue;
-			double linelength=sqrt((double) (p->get_x1()-p->get_x2())*(p->get_x1()-p->get_x2())
-																		+ (p->get_y1()-p->get_y2())*(p->get_y1()-p->get_y2()));
-											
-			aaverage=aaverage+linelength;
-			numa++;	
-		}				
-	}
-	aaverage=aaverage/(double)numa;
-	
-	double Beff=2*Phi/(sqrt((double)3)*aaverage*aaverage);		
-	std::ostringstream oss;
-	oss.str("");
-	
-	oss << "Br(x="<<(bathLength+channelLength)/a0<<"a0)=" << Beff << "T";
-	
-	normaliseSinkStr = oss.str();	
-	
-	return Beff;
-	
-}
-
-double CSimulation::calcSourceB()
-{
-	normaliseSourceStr = "";
-	double aaverage=0;
-	int numa=0;
-	for (std::list<CDelLine>::iterator p = delLinesList.begin();
-				p!=delLinesList.end(); ++p) {
-		double midy = (p->get_y1() + p->get_y2())/2.0;
-		double midx = (p->get_x1() + p->get_x2())/2.0;
-		
-		double ycutoffset = (geometry==wedge) ? channelWidth/2-(binsize/2.0*tan(pi/6)+2*b0) : channelWidth/2;
-		double ymin=channelWidth/2-ycutoffset;
-		double ymax=channelWidth/2+ycutoffset;				
-		if ( midx> bathLength-binsize/2.0 && midx < bathLength+binsize/2.0 &&
-				(midy>ymin && midy<ymax))
-		{
-			double linelength=sqrt((double) (p->get_x1()-p->get_x2())*(p->get_x1()-p->get_x2())
-																		+ (p->get_y1()-p->get_y2())*(p->get_y1()-p->get_y2()));
-											
-			aaverage=aaverage+linelength;
-			numa++;	
-		}			
-	}
-	aaverage=aaverage/(double)numa;
-	
-	double Beff=2*Phi/(sqrt((double)3)*aaverage*aaverage);		
-	std::ostringstream oss;
-	oss.str("");
-	
-	oss << "Bl(x="<<bathLength/a0<<"a0)=" << Beff << "T";
-	
-	normaliseSourceStr = oss.str();	
-	
-	return Beff;
-	
-}
-
-void CSimulation::calcBfield()
-{
-	BfieldStr = "";
-	double aaverage=0;
-	int numa=0;
-	for (std::list<CDelLine>::iterator p = delLinesList.begin();
-				p!=delLinesList.end(); ++p) {
-		double midy = (p->get_y1() + p->get_y2())/2.0;
-		double midx = (p->get_x1() + p->get_x2())/2.0;
-						
-		if ( midx > 0 && midx < channelLength &&
-				(midy > 0 && midy < channelWidth))
-		{
-			double linelength=sqrt((double) (p->get_x1()-p->get_x2())*(p->get_x1()-p->get_x2())
-																		+ (p->get_y1()-p->get_y2())*(p->get_y1()-p->get_y2()));
-											
-			aaverage=aaverage+linelength;
-			numa++;	
-		}			
-	}
-	aaverage=aaverage/(double)numa;
-	
-	double Beff=2*Phi/(sqrt((double)3)*aaverage*aaverage);		
-	std::ostringstream oss;
-	oss.str("");
-	
-	oss << "B = " << Beff << "T";
-	
-	BfieldStr = oss.str();	
-	
-	//return Beff;
-	
-}
-
-double CSimulation::calcSourceRhoV()
-{
-	int vortex_count=0;
-	
-	for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p!=vorticesList.end(); ++p)
-	{
-			if (p->get_x() < bathLength)
-				vortex_count++;
-	}
-	
-	normaliseSourceStr = "";
-	std::ostringstream oss;
-	oss.str("");
-	double unitsofarea= bathLength*bathWidth/a0/b0;
-	oss << "rhov_l(x="<<bathLength/a0<<"a0)=" << double(vortex_count)/unitsofarea;
-	
-	normaliseSourceStr = oss.str();	
-	
-	return double(vortex_count)/unitsofarea;
-	
-}
-
-double CSimulation::calcSinkRhoV()
-{
-	int vortex_count=0;
-	
-	for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p!=vorticesList.end(); ++p)
-	{
-			if (p->get_x() > channelLength+bathLength)
-				vortex_count++;
-	}
-	
-	normaliseSinkStr = "";
-	std::ostringstream oss;
-	oss.str("");
-	double unitsofarea= bathLength*bathWidth/a0/b0;
-	oss << "rhov_l(x="<<(bathLength+channelLength)/a0<< "a0)="<< double(vortex_count)/unitsofarea;
-	
-	normaliseSinkStr = oss.str();	
-	
-	return double(vortex_count)/unitsofarea;
-	
-}
-
-CParticle CSimulation::findClosestParticle (CParticle a_)
-{
-  
-	int j = 0;
-	
-	double smallest=100*a0;
-	
-	CParticle* result;
-	
-   for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p != vorticesList.end(); ++p)
-	{
-			
-		double ds2 = (p->get_x() - a_.get_x())*(p->get_x() - a_.get_x())+
-									(p->get_y() - a_.get_y())*(p->get_y() - a_.get_y());
-      
-    if (smallest > ds2)
-    {
-			smallest = ds2;
-			result = &(*p);
-    }
-    
-   }
-   
-   return (*result);
- 
-
-}
-
-CParticle CSimulation::findClosestPin (CParticle a_)
-{
-	int j = 0;
-	
-	double smallest=1000*a0;
-	
-	CParticle result;
-	
-  for (std::list<CParticle>::iterator p = pinsList.begin();
-			p != pinsList.end(); ++p)
-	{
-			
-		double ds2 = (p->get_x() - a_.get_x())*(p->get_x() - a_.get_x())+
-									(p->get_y() - a_.get_y())*(p->get_y() - a_.get_y());
-      
-    if (smallest > ds2)
-    {
-			smallest = ds2;
-			result = *p;
-			std::cout << smallest << std::endl;
-    }
-    
-   }
-   
-   return result;
- 
-
 }
 
 void CSimulation::OutputPinsList()
@@ -1099,236 +607,6 @@ void CSimulation::OutputVortexPositions()
 	}
 	
 	*fileOutputter.getFS("guifile") << "}" << std::endl;
-}
-
-void CSimulation::updateBathDensities()
-{
-	if (geometry==periodic) return;  // do not run for periodic system
-		
-	double actualSource=0;
-	double actualSink=0;
-	
-	double expectedSource=0;
-	double expectedSink=0;
-	
-	
-	if (vvForce==BesselType || vvForce==BessLogType)
-	{
-		actualSource = calcSourceB();
-		actualSink = calcSinkB();
-		
-		expectedSource = sourceBfield;
-		expectedSink = sinkBfield;
-	}
-	else if (vvForce==GaussianType || vvForce==LJType)
-	{
-		actualSource = calcSourceRhoV();
-		actualSink = calcSinkRhoV();
-	
-		expectedSource = source_rhov;
-		expectedSink = sink_rhov;
-		
-	}
-	
-	// calculate zone densities
-	int sourceCount=0;
-	int sinkCount=0;
-	
-	// relaxation_time
-	double relaxation_time = a0/fabs(get_tAvSAvVelX())/channelWidth*b0/2.0;
-	
-	if (t%100==0) std::cout << "relax time: " << relaxation_time << std::endl;
-	
-	// count densities
-	for (std::list<CParticle>::iterator p = vorticesList.begin();
-			p != vorticesList.end(); ++p)
-	{
-		if (p->get_x() < bathLength && (p->get_y()<0 || p->get_y()>channelWidth))
-			sourceCount++;
-		
-		if ( p->get_x() > bathLength+channelLength && (p->get_y()<0 || p->get_y()>channelWidth))
-			sinkCount++;
-	}
-	
-	if (dt*t-dt*lastchangedSource>=relaxation_time)		// update source after relaxation time
-	{
-		if (actualSource<expectedSource)
-		{
-			if (AddParticleToBath("source")) lastchangedSource=t;
-			std::cout << "Relaxation time: " << relaxation_time << std::endl;
-		}
-		if (actualSource>expectedSource)
-		{
-			if (RemoveParticleFromBath("source")) lastchangedSource=t;
-			std::cout << "Relaxation time: " << relaxation_time << std::endl;
-		}
-	}
-	
-	if (dt*t-dt*lastchangedSink>=relaxation_time)		// update sink after relaxation time
-	{
-		if (actualSink<expectedSink)
-		{
-			if (AddParticleToBath("sink")) lastchangedSink=t;
-			std::cout << "Relaxation time: " << relaxation_time << std::endl;
-		}
-		if (actualSink>expectedSink)
-		{
-			if (RemoveParticleFromBath("sink")) lastchangedSink=t;
-			std::cout << "Relaxation time: " << relaxation_time << std::endl;
-		}
-	}
-	
-}
-
-bool CSimulation::AddParticleToBath(std::string location_)
-{
-		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
-			throw std::runtime_error("AddParticleToBath() location_ is not source or sink");
-		
-		
-		
-		if (location_.compare("source") == 0)
-		{
-			
-			
-			if (geometry==channel || geometry==tube)
-			{
-				CParticle newVortex;
-				
-				double xval = (2*a0)*(rand() % 1000)/1000.0;
-				double yval = bathWidth*(rand() % 1000)/1000.0;
-				xval=xval+a0/2.0;
-			
-				newVortex.set_pos(xval,yval);
-				vorticesList.push_back(newVortex);
-			}
-			else throw std::runtime_error ("AddParticleToBath() not valid geometry");
-			
-			//output newVortex added data
-				
-		}
-		else if (location_.compare("sink") == 0)
-		{
-			
-			
-			if (geometry==channel || geometry==tube)
-			{
-				CParticle newVortex;
-				
-				double xval = (2*a0)*(rand() % 1000)/1000.0;
-				double yval = bathWidth*(rand() % 1000)/1000.0;
-				xval=xval-a0/2.0;
-				
-				// offset to end of system
-				xval = 2*bathLength + channelLength-xval;
-				
-				newVortex.set_pos(xval,yval);
-				vorticesList.push_back(newVortex);
-
-			}
-			else throw std::runtime_error ("AddParticleToBath() not valid geometry");
-			
-		
-				
-		}		
-		
-		//output newVortex added data
-		if (outputType!=0 && outputType!=1 ) *fileOutputter.getFS("newVortexfile") << " " << t << " " << 1 << std::endl;
-		
-		std::cout << "Particle added at timestep:  " << t << " in " << location_ << std::endl;
-		
-		return true;
-}
-
-bool CSimulation::RemoveParticleFromBath(std::string location_)
-{
-		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
-			throw std::runtime_error("RemoveParticleFromBath() location_ is not source or sink");
-		
-		double removalx;
-		
-		int vortex_to_remove = -1;
-		
-		// make a vector of pointers to particles in the target bath
-			
-		std::vector<CParticle> targetVortices;
-			std::vector<CParticle> otherVortices;
-		
-		if (location_.compare("source") == 0)
-		{
-			
-			
-			
-			removalx = geom->GetRemovalSourceX();
-				
-			
-			
-			// calculate which vortices are in removal zone
-			
-			for (std::list<CParticle>::iterator p = vorticesList.begin();
-				p != vorticesList.end(); ++p) {
-				if (p->get_x() < removalx)
-				{ 
-					//sinkCount++;
-					targetVortices.push_back(*p);
-				}
-				else otherVortices.push_back(*p);
-				
-			}
-			
-			//choose a random sink vortex to be removed
-	
-			if (targetVortices.size()!=0)
-			{
-					vortex_to_remove = rand() % targetVortices.size();
-			}
-		}	
-		else if (location_.compare("sink") == 0)
-		{
-			removalx = geom->GetRemovalSinkX();
-			
-		
-			
-			
-			// calculate which vortices are in removal zone
-			
-			for (std::list<CParticle>::iterator p = vorticesList.begin();
-				p != vorticesList.end(); ++p) {
-				if (p->get_x() > removalx)
-				{ 
-					//sinkCount++;
-					targetVortices.push_back(*p);
-				}
-				else otherVortices.push_back(*p);
-				
-			}
-			
-			//choose a random sink vortex to be removed
-			
-			if (targetVortices.size()!=0)
-			{
-					vortex_to_remove = rand() % targetVortices.size();
-			}
-			
-		}
-		
-		if (vortex_to_remove!=-1)
-		{ // remove a sinkVortex
-			std::vector<CParticle>::iterator p = targetVortices.begin() + vortex_to_remove;
-			targetVortices.erase(p);
-
-			//update vorticesList without the removed vortex
-			vorticesList.clear();
-			
-			std::copy( otherVortices.begin(), otherVortices.end(), std::back_inserter( vorticesList ) );
-			std::copy( targetVortices.begin(), targetVortices.end(), std::back_inserter( vorticesList ) );
-			
-			std::cout << "Particle removed at timestep:  " << t << " from " << location_ << std::endl;
-			return true;
-		}
-		
-	return false;
-		
 }
 
 GeometryBase * CSimulation::CreateGeometry()

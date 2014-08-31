@@ -2,16 +2,18 @@
 runtype=2
 outputType=1
 geometry=0
+simulationTime=10000
+relaxtime=0
+temp=0.06
+lorentzForce=0.0
+
+[Geometry]
 sourceBfield=0.25
 sinkBfield=0.14
 bathLength=20
 bathWidth=8
 channelLength=60
 channelWidth=8
-simulationTime=40000
-relaxtime=0
-temp=0.000001
-lorentzForce=0.0
 
 [InputData]
 altPosFile=false
@@ -30,9 +32,11 @@ kB=1.0
 Ap=1
 dt=0.01
 tau=1
+drawInterval=5
 triangulationInterval=5
 framedataInterval=100
-calcTrajectories=true
+drawCoordinateGrid=false
+showParticleTracker=false
 thermostat=Anderson
 disorderDensity=0
 disorderStrength=1e-11
@@ -41,11 +45,6 @@ disorderRange=0.2e-7
 [BathParameters]
 applyBathVelocities=false
 applyStiffBath=false
-flatChannelEnds=false
-reflectedChannelEnds=false
-
-[WallParameters]
-applyBounceBack=false
 
 [Interactions]
 vvForce=1
@@ -53,4 +52,4 @@ Phi=0.2067
 lambda=1.11
 
 [Job]
-jobtag=jobname
+jobtag=velprediction

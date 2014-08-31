@@ -9,147 +9,6 @@ namespace Utilities
 
 }
 
-void Utilities::wrapVortices(std::list<CParticle>& vorticesList_, double ysize_, double wrapsize_)
-{
-	
-	std::list<CParticle> wrappedVorticesList;
-	wrappedVorticesList=vorticesList_;
-	
-	for (std::list<CParticle>::iterator p = vorticesList_.begin();
-		p!=vorticesList_.end(); ++p )
-	{
-			if (p->get_y() <= wrapsize_)  // forcerange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_y() >= ysize_-wrapsize_) //channelWidth-forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-	}
-	
-	vorticesList_=wrappedVorticesList;
-	
-}
-	
-
-void Utilities::wrapVorticesPeriodic(std::list<CParticle>& vorticesList_, double xsize_, double ysize_, double wrapsize_)
-{
-	std::list<CParticle> wrappedVorticesList;
-	wrappedVorticesList=vorticesList_;
-	
-	for (std::list<CParticle>::iterator p = vorticesList_.begin();
-		p!=vorticesList_.end(); ++p )
-	{
-		// wrap vortices on tube
-		//if (p->get_x() >=0) {
-			if (p->get_y() <= wrapsize_) // forcerange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize_); // channelWidth
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_y() >= ysize_- wrapsize_) // channelWidth-forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			if (p->get_x() <= wrapsize_)  // forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+xsize_,newVortex.get_y()); // channelLength
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_x() >= xsize_ - wrapsize_)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-xsize_,newVortex.get_y()); // channelLengtg
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			
-			// corners
-			if (p->get_y() <= wrapsize_ && p->get_x() <=wrapsize_)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+xsize_,newVortex.get_y()+ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_y() >= ysize_-wrapsize_ && p->get_x() >= xsize_-wrapsize_)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-xsize_,newVortex.get_y()-ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_y() <= wrapsize_ && p->get_x() >= xsize_-wrapsize_)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-xsize_,newVortex.get_y()+ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_y() >= ysize_-wrapsize_ && p->get_x() <= wrapsize_)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+xsize_,newVortex.get_y()-ysize_);
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			
-			
-			
-			
-			
-			
-			
-		//}
-		
-		/*else if (p->get_x() < 0) {  // wrap vortices on cone
-			if (p->get_y() <= -fabs(p->get_x())*tan(funnelAngle)+forceRange) {
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+channelHeight+b0+2.0*fabs(p->get_x())*tan(funnelAngle) );
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			else if (p->get_y() >= channelHeight+fabs(p->get_x())*tan(funnelAngle)-forceRange) {
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-channelHeight-b0-2.0*fabs(p->get_x())*tan(funnelAngle));
-				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
-			}
-			
-		}*/
-	}
-	
-	vorticesList_=wrappedVorticesList;
-
-}
-
-
 double Utilities::gaussianRand()
 {
 	double result;
@@ -169,4 +28,10 @@ double Utilities::gaussianRand()
 	if (boost::math::isinf(result)) std::cout << "inf: gaussian rand result: " << "(" << result << ")" << std::endl;
 		 
 	return result;
+}
+
+double Utilities::NormalVariate()
+{
+	//return gen_normal_3(generator);
+	return gaussianRand();
 }

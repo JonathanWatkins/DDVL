@@ -1,13 +1,15 @@
 #include "CParallelEulerIntegrator.hpp"
-#include "Utilities.hpp" 
-#include "CSimulation.hpp"
 
 #include <list>
 #include <cilk/cilk.h>
 #include <string>
 
-#include <boost/random.hpp>
-#include <boost/random/normal_distribution.hpp>
+#include <boost/math/special_functions/bessel.hpp>
+
+#include "rv_library.hpp" 
+#include "CSimulation.hpp"
+#include "GeometryBase.hpp"
+
 
 // force prototypes
 
@@ -16,22 +18,6 @@ double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim
 double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
 double GaussianPinForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
 double LJForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
-
-
-template<class T>
-double gen_normal_3(T &generator)
-{
-  double rn=0;
-	rn =generator();
-  return rn; 
-}
-
-
-// Using seed for mt as time(0) does not allow runs to be repeated with same seeds
-boost::variate_generator<boost::mt19937, boost::normal_distribution<> >
-    generator(boost::mt19937(time(0)),
-              boost::normal_distribution<>());
-
 
 
 CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_) :
@@ -51,7 +37,6 @@ av_force_t(sim_->av_force_t)
 	applyStiffBath=sim->get_applyStiffBath();
 	applyMaxVelocities=sim->get_applyMaxVelocities();
 	
-	geometry=sim->get_geometry();
 	vvForce=sim->get_vvForce();
 	
 	pinsList=*sim->get_pinsList();
@@ -136,8 +121,7 @@ void CParallelEulerIntegrator::Integrate()
 	// copy the current vorticesList to the lastvorticesList
 	std::list<CParticle> lastvorticesList=vorticesList;
 	
-	if (geometry==tube) Utilities::wrapVortices(lastvorticesList, sim->get_channelWidth(), sim->get_forceRange());
-	if (geometry==periodic) Utilities::wrapVorticesPeriodic(lastvorticesList, sim->get_channelLength(), sim->get_channelWidth(), sim->get_forceRange());
+	sim->get_geom()->WrapVortices(lastvorticesList);
 		
 	// divide the vorticesList and lastvorticesList into cells
 	
@@ -215,16 +199,6 @@ void CParallelEulerIntegrator::Integrate()
 							{
 								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,BessLogForce);
 								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,BessLogForce);
-							}
-							else if (vvForce==GaussianType)
-							{
-								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianForce);
-								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianForce);
-							}
-							else if (vvForce==LJType)
-							{
-								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,LJForce);
-								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,LJForce);
 							}
 							
 							
@@ -350,7 +324,7 @@ double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim
 	if (dist_==0)
 	{
 		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(Utilities::gaussianRand());
+		force=0.0000000001*fabs(rv::GetNormalVariate());
 	}
 	//else if (dist_< 0.5*sim_->get_a0())
 	//{
@@ -390,7 +364,7 @@ double BesselsForce(const double & dist_, const bool & inbath_, CSimulation *sim
 	if (dist_==0)
 	{
 		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(Utilities::gaussianRand());
+		force=0.0000000001*fabs(rv::GetNormalVariate());
 	}
 	//else if (dist_< 0.5*sim_->get_a0())
 	//{
@@ -559,7 +533,7 @@ double CParallelEulerIntegrator::forceForm(double dist_, bool inbath_)
 	if (dist_==0)
 	{
 		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(Utilities::gaussianRand());
+		force=0.0000000001*fabs(rv::GetNormalVariate());
 	}
 	else
 	{
@@ -642,7 +616,7 @@ double CParallelEulerIntegrator::AndersonTS() const
 	if (p>rand()/(double)RAND_MAX)
 	{	
 		
-		return sqrt(2*temp*kB*eta/dt/p)*gen_normal_3(generator);
+		return sqrt(2*temp*kB*eta/dt/p)*rv::GetNormalVariate();
 	}
 	else
 	{
@@ -653,7 +627,7 @@ double CParallelEulerIntegrator::AndersonTS() const
 
 double CParallelEulerIntegrator::LindemanTS() const
 {
-	return sqrt((double)temp)*gen_normal_3(generator);
+	return sqrt((double)temp)*rv::GetNormalVariate();
 	
 }
 

@@ -120,8 +120,6 @@ private:
 	
 	std::list<CParticle> disorderList;
 	
-	int geometry;
-	
 	double eta;
 	
 	double dt;

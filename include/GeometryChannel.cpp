@@ -2,37 +2,45 @@
 //	GeometryChannel.cpp
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+#pragma warning ( disable : 2586  )  // supresses warning a bug due to icc and boost compilation
+
 #include <stdexcept>
 #include <list>
 #include <iterator>
 #include <iostream>
 #include <fstream>
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+
 #include "GeometryChannel.hpp"
 #include "CSimulation.hpp"
 #include "CParticle.hpp"
+
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	constructor
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 GeometryChannel::GeometryChannel(CSimulation & sim_)
-:   vorticesList(sim_.get_vorticesList())
+:		sim(sim_)
+,   vorticesList(sim_.get_vorticesList())
 ,		pinsList(sim_.get_pinsList())
-,		bathLength(sim_.get_bathLength())
-,		bathWidth(sim_.get_bathWidth())
-,		channelLength(sim_.get_channelLength())
-,		channelWidth(sim_.get_channelWidth())
-,		sourceBfield(sim_.get_sourceBfield())
-,		sinkBfield(sim_.get_sinkBfield())
+,   delLinesList(sim_.get_delLinesList())
 ,		Phi(sim_.get_Phi())
 ,		a0(sim_.get_a0())
 ,		b0(sim_.get_b0())
+,		dt(sim_.get_dt())
+,		binsize(sim.get_binsize())
 ,   pos_file_name(sim_.GetPosFileName())
 ,		pins_file_name(sim_.GetPinsFileName())
+,		jobBatchFileLocation(sim_.get_jobBatchFileLocation())
 {
+
+	LoadBatchFile();
 	
-		
+	
+	// calculate system parameters
 	channelOffset = (bathWidth-channelWidth)/2.0;
 	
 	etchsourcex0 =0; 
@@ -57,14 +65,26 @@ GeometryChannel::GeometryChannel(CSimulation & sim_)
 	removesourcey0=removetopchannely=channelOffset-3.0*b0/2;
 	removesourcey1=removebottomchannely=channelWidth+channelOffset+3.0*b0/2;
 	
-	
 	sourceDensity=(int)(bathLength*bathWidth*sourceBfield/Phi); 
 	sinkDensity=(int)(bathLength*bathWidth*sinkBfield/Phi); 
 	channelDensity=(int)(channelLength*(channelWidth+b0)*((sourceBfield+sinkBfield)/Phi)/2.0); 	
 	 
 	
 }
-    
+
+void GeometryChannel::LoadBatchFile()
+{
+	boost::property_tree::ptree pt;
+	boost::property_tree::ini_parser::read_ini(jobBatchFileLocation, pt);
+	
+	channelLength=pt.get<double>("Geometry.channelLength")*a0;
+	channelWidth=pt.get<double>("Geometry.channelWidth")*b0;
+	sourceBfield=pt.get<double>("Geometry.sourceBfield");
+	sinkBfield=pt.get<double>("Geometry.sinkBfield");
+	bathLength=pt.get<double>("Geometry.bathLength")*a0;
+	bathWidth=pt.get<double>("Geometry.bathWidth")*b0;
+	
+}
 
 void GeometryChannel::InitialiseVortices() const
 {
@@ -355,6 +375,308 @@ CParticle GeometryChannel::GetFirstPin() const
 {
 	return firstPin;
 }
+
+
+
+void GeometryChannel::UpdateBathDensities() const
+{
+	int t = sim.get_t();
+	
+	static double lastchangedSource=0;
+	static double lastchangedSink=0;
+	
+	double actualSource = calcSourceB();
+	double actualSink = calcSinkB();
+	
+	if (t%100==0) std::cout << sourceBfield << "(" << actualSource << ")       (" << sinkBfield << "(" << actualSink << ")" << std::endl;
+		
+	double expectedSource = sourceBfield;
+	double expectedSink = sinkBfield;
+	
+	
+	// calculate zone densities
+	int sourceCount=0;
+	int sinkCount=0;
+	
+	// relaxation time
+	double relaxation_time = a0/fabs(sim.get_tAvSAvVelX())/channelWidth*b0*.75; 
+	
+	if (t%1000==0) std::cout << "relaxation time: " << relaxation_time << std::endl;
+	
+	// count densities
+	for (std::list<CParticle>::iterator p = vorticesList->begin();
+			p != vorticesList->end(); ++p)
+	{
+		if (p->get_x() < bathLength && (p->get_y()<0 || p->get_y()>channelWidth))
+			sourceCount++;
+		
+		if ( p->get_x() > bathLength+channelLength && (p->get_y()<0 || p->get_y()>channelWidth))
+			sinkCount++;
+	}
+	if (dt*t-dt*lastchangedSource>=relaxation_time)		// update source after relaxation time
+	{
+		if (actualSource<expectedSource)
+		{
+			if (AddParticleToBath("source")) lastchangedSource=t;
+		}
+		if (actualSource>expectedSource)
+		{
+			if (RemoveParticleFromBath("source")) lastchangedSource=t;
+		}
+	}
+	
+	if (dt*t-dt*lastchangedSink>=relaxation_time)		// update sink after relaxation time
+	{
+		if (actualSink<expectedSink)
+		{
+			if (AddParticleToBath("sink")) lastchangedSink=t;
+		}
+		if (actualSink>expectedSink)
+		{
+			if (RemoveParticleFromBath("sink")) lastchangedSink=t;
+		}
+	}
+	
+}
+
+bool GeometryChannel::AddParticleToBath(std::string location_) const
+{
+		int t = sim.get_t();
+	
+		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
+			throw std::runtime_error("AddParticleToBath() location_ is not source or sink");
+
+		if (location_.compare("source") == 0)
+		{
+		
+			CParticle newVortex;
+				
+			double xval = (2*a0)*(rand() % 1000)/1000.0;
+			double yval = bathWidth*(rand() % 1000)/1000.0;
+			xval=xval+a0/2.0;
+		
+			newVortex.set_pos(xval,yval);
+			vorticesList->push_back(newVortex);
+				
+		}
+		else if (location_.compare("sink") == 0)
+		{
+
+			CParticle newVortex;
+				
+			double xval = (2*a0)*(rand() % 1000)/1000.0;
+			double yval = bathWidth*(rand() % 1000)/1000.0;
+			xval=xval-a0/2.0;
+				
+			// offset to end of system
+			xval = 2*bathLength + channelLength-xval;
+				
+			newVortex.set_pos(xval,yval);
+			vorticesList->push_back(newVortex);
+				
+		}		
+		
+		if (location_.compare("source") == 0)
+		{
+			std::cout << t << "  +                    " << std::endl;	
+		}	
+		if (location_.compare("sink") == 0)
+		{
+			std::cout << t << "                      +" << std::endl;	
+		}	
+		
+		return true;
+}
+
+bool GeometryChannel::RemoveParticleFromBath(std::string location_) const
+{
+		int t = sim.get_t();
+		
+		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
+			throw std::runtime_error("RemoveParticleFromBath() location_ is not source or sink");
+		
+		double removalx;
+		
+		int vortex_to_remove = -1;
+		
+		// make a vector of pointers to particles in the target bath
+			
+		std::vector<CParticle> targetVortices;
+		std::vector<CParticle> otherVortices;
+		
+		if (location_.compare("source") == 0)
+		{
+		
+			removalx = GetRemovalSourceX();
+		
+			// calculate which vortices are in removal zone
+			
+			for (std::list<CParticle>::iterator p = vorticesList->begin();
+				p != vorticesList->end(); ++p) {
+				
+				if (p->get_x() < removalx)
+				{ 
+					//sinkCount++;
+					targetVortices.push_back(*p);
+				}
+				else otherVortices.push_back(*p);
+				
+			}
+			
+			//choose a random sink vortex to be removed
+	
+			if (targetVortices.size()!=0)
+			{
+					vortex_to_remove = rand() % targetVortices.size();
+			}
+		}	
+		else if (location_.compare("sink") == 0)
+		{
+			removalx = GetRemovalSinkX();
+			
+		  // calculate which vortices are in removal zone
+			
+			for (std::list<CParticle>::iterator p = vorticesList->begin();
+				p != vorticesList->end(); ++p) {
+				if (p->get_x() > removalx)
+				{ 
+					//sinkCount++;
+					targetVortices.push_back(*p);
+				}
+				else otherVortices.push_back(*p);
+				
+			}
+			
+			//choose a random sink vortex to be removed
+			
+			if (targetVortices.size()!=0)
+			{
+					vortex_to_remove = rand() % targetVortices.size();
+			}
+			
+		}
+		
+		if (vortex_to_remove!=-1)
+		{ // remove a sinkVortex
+			std::vector<CParticle>::iterator p = targetVortices.begin() + vortex_to_remove;
+			targetVortices.erase(p);
+
+			//update vorticesList without the removed vortex
+			vorticesList->clear();
+			
+			std::copy( otherVortices.begin(), otherVortices.end(), std::back_inserter( *vorticesList ) );
+			std::copy( targetVortices.begin(), targetVortices.end(), std::back_inserter( *vorticesList ) );
+			
+			if (location_.compare("source") == 0)
+			{
+				std::cout << t << "  -                    " << std::endl;	
+			}	
+			if (location_.compare("sink") == 0)
+			{
+				std::cout << t << "                      -" << std::endl;	
+			}	
+				
+			
+			return true;
+		}
+		
+	return false;
+		
+}
+
+
+double GeometryChannel::calcSinkB() const
+{
+	
+	double aaverage=0;
+	int numa=0;
+	for (std::list<CDelLine>::iterator p = delLinesList->begin();
+				p!=delLinesList->end(); ++p)
+	{
+		double midy = (p->get_y1() + p->get_y2())/2.0;
+		double midx = (p->get_x1() + p->get_x2())/2.0;
+						
+		if ( (midx > bathLength+channelLength-binsize/2.0 && midx<bathLength+channelLength+binsize/2.0) &&
+				(midy>0 && midy<channelWidth))
+		{
+		
+			double linelength=sqrt((double) (p->get_x1()-p->get_x2())*(p->get_x1()-p->get_x2())
+																		+ (p->get_y1()-p->get_y2())*(p->get_y1()-p->get_y2()));		
+			aaverage=aaverage+linelength;
+			numa++;	
+		
+		}				
+	}
+	aaverage=aaverage/(double)numa;
+	
+	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
+	
+}
+
+double GeometryChannel::calcSourceB() const
+{
+	
+	double aaverage=0;
+	int numa=0;
+	for (std::list<CDelLine>::iterator p = delLinesList->begin();
+				p!=delLinesList->end(); ++p)
+	{
+		double midy = (p->get_y1() + p->get_y2())/2.0;
+		double midx = (p->get_x1() + p->get_x2())/2.0;
+		
+		double ymin=0;
+		double ymax=channelWidth;				
+		if ( midx> bathLength-binsize/2.0 && midx < bathLength+binsize/2.0 &&
+				(midy>ymin && midy<ymax))
+		{
+			double linelength=sqrt((double) (p->get_x1()-p->get_x2())*(p->get_x1()-p->get_x2())
+																		+ (p->get_y1()-p->get_y2())*(p->get_y1()-p->get_y2()));
+											
+			aaverage=aaverage+linelength;
+			numa++;
+		}			
+	}
+	aaverage=aaverage/(double)numa;
+	
+	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
+	
+	
+}
+
+void GeometryChannel::WrapVortices(std::list<CParticle>& vorticesList_) const
+{
+	return;
+	/* no wrap
+	double wrapsize = sim.get_forceRange();
+	double ysize = channelWidth;
+	std::list<CParticle> wrappedVorticesList;
+	wrappedVorticesList=vorticesList_;
+
+	for (std::list<CParticle>::iterator p = vorticesList_.begin();
+		p!=vorticesList_.end(); ++p )
+	{
+			if (p->get_y() <= wrapsize)  // forcerange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
+				newVortex.set_ghost();
+				wrappedVorticesList.push_back(newVortex);
+			}
+			else if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
+				newVortex.set_ghost();
+				wrappedVorticesList.push_back(newVortex);
+			}
+	}
+	
+	vorticesList_=wrappedVorticesList;
+	*/
+}
+
 
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
