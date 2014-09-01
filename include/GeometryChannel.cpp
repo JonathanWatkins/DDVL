@@ -173,7 +173,7 @@ void GeometryChannel::ReplaceEscapedVortices() const
  	for (std::list<CParticle>::iterator p = vorticesList->begin();
 			p!=vorticesList->end(); ++p)
 	{
- 	
+ 
 		if (p->get_x() <= removesourcex || p->get_y() <= removesourcey0 || 
 				p->get_x() >= removesinkx  || p->get_y() >= removesourcey1 )
 		{		
@@ -270,7 +270,6 @@ void GeometryChannel::InitialisePins()
 			}
 		
 			yPos=yPos+2*localb0;
-			std::cout << "   yPos: " << yPos << std::endl;
 		}
 		
 		//etch source, sink && channel

@@ -143,7 +143,7 @@ void CParallelEulerIntegrator::Integrate()
 	
 	cilk_for(int i = 1; i < MAXLINKEDLISTSIZE-1; ++i)
 	{
-		cilk_for(int j = 1; j < MAXLINKEDLISTSIZE-1; ++j)
+		for(int j = 1; j < MAXLINKEDLISTSIZE-1; ++j)
 		{
 				//if ((*cll[i][j].get_cellList()).size()!=0)
 				//		std::cout << (*cll[i][j].get_cellList()).size() <<std::endl;
@@ -264,7 +264,7 @@ void CParallelEulerIntegrator::Integrate()
 	}
 	
 	// check for duplicate positions
-	CheckDuplicatePositions(cll);
+	//CheckDuplicatePositions(cll);
 	
 	// updates vortices list
 	vorticesList.clear();
@@ -324,18 +324,16 @@ void CParallelEulerIntegrator::Integrate2()
 	
 	std::vector<CParticle> lastvorticesVector=vorticesVector;
 	
-	std::cout << "Length before: " << lastvorticesVector.size() << std::endl;
 	std::copy( pinsList.begin(), pinsList.end(), std::back_inserter( lastvorticesVector ) );
-	std::cout << "Length after: " << lastvorticesVector.size() << std::endl;
 	
 	//sim->get_geom()->WrapVortices(lastvorticesList);
 		
 	// loop over all cll comparing with lastcll and cllp lists
 
-	for (int i = 0; i<vorticesVector.size(); ++i)
+	cilk_for (int i = 0; i<vorticesVector.size(); ++i)
 	{
 		double x = vorticesVector[i].get_x();
-		double y = vorticesVector[i].get_x();
+		double y = vorticesVector[i].get_y();
 		
 		double tempForce[2]={0,0};
 					

@@ -8,6 +8,8 @@
 
 #include <boost/function.hpp>
 
+#define MAXLINKEDLISTSIZE 100
+
 
 class CSimulation;
 

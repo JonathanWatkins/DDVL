@@ -28,7 +28,6 @@ class GeometryBase;
 #define BesselType			1
 #define BessLogType			3
 
-#define MAXLINKEDLISTSIZE 100
 
 struct SMoves
 {
