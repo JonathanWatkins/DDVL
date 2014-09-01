@@ -270,7 +270,7 @@ void CSimulation::OutputSimulationTimes()
 void CSimulation::CopyJobBatchFile()
 {
 	// copy jobheader to job directory and change name to jobheader.ini
-	std::ifstream f1(jobBatchFileLocation, std::fstream::binary);
+	std::ifstream f1(jobBatchFileLocation.c_str(), std::fstream::binary);
   
   // this is a hack
   std::ostringstream oss;
