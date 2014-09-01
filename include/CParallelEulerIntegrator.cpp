@@ -1,8 +1,13 @@
+#pragma warning ( disable : 239  )  // supresses warning a bug due to icc and boost compilation
+#pragma warning ( disable : 809  )  // supresses warning a bug due to icc and boost compilation
+
+
 #include "CParallelEulerIntegrator.hpp"
 
 #include <list>
 #include <cilk/cilk.h>
 #include <string>
+#include <vector>
 
 #include <boost/math/special_functions/bessel.hpp>
 
@@ -114,6 +119,8 @@ CParallelEulerIntegrator::~CParallelEulerIntegrator()
 
 void CParallelEulerIntegrator::Integrate()
 {
+	//Integrate2();
+	//return;
 	// get this step values
 	M2=0;
 	M2Full=0;
@@ -154,7 +161,7 @@ void CParallelEulerIntegrator::Integrate()
 					double tempForce[2]={0,0};
 					
 					// calculate forces due to temperature kick 
-					temperatureInteraction(p,tempForce);
+					temperatureInteraction(tempForce);
 					
 					// initialise stress terms
 					double JyyK=0;  // kinetic term
@@ -302,6 +309,156 @@ void CParallelEulerIntegrator::Integrate()
 	
 	
 }
+
+void CParallelEulerIntegrator::Integrate2()
+{
+	// get this step values
+	M2=0;
+	M2Full=0;
+	
+	// copy the current vorticesList to the lastvorticesList
+	
+	std::vector<CParticle> vorticesVector;
+	
+	std::copy( vorticesList.begin(), vorticesList.end(), std::back_inserter( vorticesVector ) );
+	
+	std::vector<CParticle> lastvorticesVector=vorticesVector;
+	
+	std::cout << "Length before: " << lastvorticesVector.size() << std::endl;
+	std::copy( pinsList.begin(), pinsList.end(), std::back_inserter( lastvorticesVector ) );
+	std::cout << "Length after: " << lastvorticesVector.size() << std::endl;
+	
+	//sim->get_geom()->WrapVortices(lastvorticesList);
+		
+	// loop over all cll comparing with lastcll and cllp lists
+
+	for (int i = 0; i<vorticesVector.size(); ++i)
+	{
+		double x = vorticesVector[i].get_x();
+		double y = vorticesVector[i].get_x();
+		
+		double tempForce[2]={0,0};
+					
+		// calculate forces due to temperature kick 
+		temperatureInteraction(tempForce);
+		
+		// initialise forces to be zero
+		double force[2]={0,0};
+		double vortexForce[2]={0,0};
+		double disorderForce[2]={0,0};
+		
+		// is the vortex in the bath (so will need stiff lattice adjustment
+		bool inbath=false;
+		if (applyStiffBath==true)
+		{
+			if (x< bathLength || x >bathLength+channelLength)
+				inbath=true;
+		}				
+					
+		
+		for (int j = 0; j<lastvorticesVector.size(); ++j)
+		{
+		
+			// check interation between particles
+			// in this and neighbouring cells
+			if (vvForce==BesselType)
+			{
+				vvInteration2(&vorticesVector[i],&lastvorticesVector[j],vortexForce,inbath,BesselsForce);
+				
+			}
+			else if (vvForce==BessLogType)
+			{
+				vvInteration2(&vorticesVector[i],&lastvorticesVector[j],vortexForce,inbath,BessLogForce);
+			}
+			
+				
+			// calculate forces and stresses between quenced disorder 
+				
+			//vvInteration(p,(*clldis[k][l].get_cellList()),disorderForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianPinForce);
+		}
+										
+		// set raw velocity
+	
+		double forcep_dx = vortexForce[0]+disorderForce[0]+lorentzForce;
+		double forcep_dy = vortexForce[1]+disorderForce[1];
+		
+		double forcep_tx = tempForce[0];
+		double forcep_ty = tempForce[1];
+		
+		vorticesVector[i].set_force_d_t(forcep_dx, forcep_dy, forcep_tx, forcep_ty);
+							
+		double velx=(forcep_dx + forcep_tx)/eta;
+		double vely=(forcep_dy + forcep_ty)/eta;
+		
+		// Apply simulation adjustments to velocity
+							
+		ApplyMaxVelocities2(&vorticesVector[i],velx,vely);
+		
+		//ApplyBathVelocities(p,velx,vely);			
+		
+		// set velocity then check if valid
+		
+		vorticesVector[i].set_vel(velx,vely);
+		
+		
+	
+							
+		// set last position
+		vorticesVector[i].set_lastpos(x,y);
+		
+		// set new position then check if valid
+		vorticesVector[i].set_pos(x+velx*dt,y+vely*dt);
+									
+					
+			
+			
+			
+	}
+	
+	
+	
+	// updates vortices list
+	vorticesList.clear();
+	std::copy( vorticesVector.begin(), vorticesVector.end(), std::back_inserter( vorticesList ) );
+	
+	
+	// average forces per particle for the system
+	frame_force_d = 0;
+	frame_force_t = 0;
+
+	for (std::list<CParticle>::iterator p = vorticesList.begin();
+		p != vorticesList.end(); ++p )
+	{
+		double forcep_dx= p->get_force_dx();
+		double forcep_dy= p->get_force_dy();
+		double forcep_tx= p->get_force_tx();
+		double forcep_ty= p->get_force_ty();
+		
+		frame_force_d += sqrt(forcep_dx*forcep_dx+forcep_dy*forcep_dy);
+		frame_force_t += sqrt(forcep_tx*forcep_tx+forcep_ty*forcep_ty);
+		
+		M2 += (forcep_tx*dt/eta)*(forcep_tx*dt/eta);
+		M2Full += (p->get_x()-p->get_lastx())*(p->get_x()-p->get_lastx());
+		
+					
+		
+	}			
+		
+	
+	
+	frame_force_d/=vorticesList.size();
+	frame_force_t/=vorticesList.size();
+	
+	av_force_d.add(frame_force_d);
+	av_force_t.add(frame_force_t);
+	
+	M2Sum+=M2/vorticesList.size()/dt;
+	M2FullSum+=M2Full/vorticesList.size()/dt;	
+			
+}
+
+
+
 
 //*************************************************************************************************************
 // 
@@ -639,7 +796,7 @@ double CParallelEulerIntegrator::LindemanTS() const
 //
 //*************************************************************************************************************
 
-void CParallelEulerIntegrator::temperatureInteraction(std::list<CParticle>::iterator & q_,double (&tempForce_)[2])
+void CParallelEulerIntegrator::temperatureInteraction(double (&tempForce_)[2])
 {
 	
 	//if (q_->get_x()>bathLength && q_->get_x()<bathLength+channelLength)
@@ -664,6 +821,7 @@ void CParallelEulerIntegrator::temperatureInteraction(std::list<CParticle>::iter
 		std::cout << "t: " << t << "temperature inf" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
 		//}
 }
+
 
 
 //*************************************************************************************************************
@@ -702,6 +860,54 @@ void CParallelEulerIntegrator::ApplyBathVelocities(std::list<CParticle>::iterato
 //*************************************************************************************************************
 
 void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator p_, double &velx_, double & vely_)
+{		
+			if (applyMaxVelocities==false)
+				return;
+			static int num_corrections=0;
+			static int num_checks=0;
+			static int thist=t;
+			
+			num_checks++;
+			
+			if (t==thist+2)
+			{
+				num_corrections=0;
+				num_checks=0;
+			
+				//std::cout << thist << ", " << t << std::endl;
+				std::cout << "Ratio of corections: " << double(num_corrections)/vorticesList.size() << " (" << num_corrections << "/" << num_checks << ")"<< std::endl;
+				thist=t;
+			}
+			
+			double maxvel = (p_->get_x()<bathLength || p_->get_x()>channelLength+bathLength) ? 0.5*b0/dt : maxvel=0.5*b0/dt;
+			 
+			if(velx_>maxvel)
+			{
+				velx_=maxvel;
+				num_corrections++;
+			}
+		
+			if(velx_<-maxvel)
+			{
+				velx_=-maxvel;
+				num_corrections++;
+			}
+		
+			if(vely_>maxvel)
+			{
+				vely_=maxvel;
+				num_corrections++;
+			}
+		
+			if(vely_<-maxvel)
+			{
+				vely_=-maxvel;
+				num_corrections++;
+			}
+			
+}
+
+void CParallelEulerIntegrator::ApplyMaxVelocities2(CParticle * p_, double &velx_, double & vely_)
 {		
 			if (applyMaxVelocities==false)
 				return;
@@ -835,3 +1041,53 @@ void CParallelEulerIntegrator::ClearLinkedLists()
 	
 }
 
+void CParallelEulerIntegrator::vvInteration2(
+		CParticle *  p_,
+		CParticle *  q_,
+		double (&force_)[2],
+		const bool &inbath_,
+		boost::function<double (double,bool, CSimulation *)> func_
+		)
+{
+	double forceSum[2]={0,0};
+	
+	// do not check interaction between particle and itself
+	if (q_->get_id()==p_->get_id())
+			return;
+			
+	double pxqx = p_->get_x()-q_->get_x();
+	double pyqy = p_->get_y()-q_->get_y();
+		 
+	// r is the distance between points
+	// rvector is the direction from q to p
+	// r hat is the unit vector pointing from q to p
+	
+	double r= sqrt( pxqx*pxqx + pyqy*pyqy );
+	
+	// check r is a valid number
+	if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
+	
+	if (boost::math::isinf(r)) throw std::runtime_error ("calculateForces() r is inf");
+
+	//only include vortices closer than the forceRange cutoff								
+	if (r > forceRange)
+			return;
+	
+	// calculate rhat
+	double rvector[2]={pxqx,pyqy};
+	
+	if (r==0)
+		return;
+		
+	double rhat[2] ={rvector[0]/r,rvector[1]/r};
+	
+	
+	double f=func_(r,inbath_,sim);
+	//forceForm(r,inbath_);
+	
+	force_[0]=force_[0]+f*rhat[0];
+	force_[1]=force_[1]+f*rhat[1];
+	
+	
+	
+}

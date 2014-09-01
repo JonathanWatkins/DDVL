@@ -21,9 +21,11 @@ public:
 	~CParallelEulerIntegrator();
 	
 	void Integrate();
-		 
+	
 private:
-
+	
+	void Integrate2();
+	
 	void ClearLinkedLists();
 	
 	void CreateCellLinkedLists(
@@ -46,6 +48,14 @@ private:
 		boost::function<double (double,bool, CSimulation *)> func_
 		);																				// Calculates the vortex-vortex interation
 	
+	void vvInteration2(
+		CParticle *  p_,
+		CParticle *  q_,
+		double (&force_)[2],
+		const bool &inbath_,
+		boost::function<double (double,bool, CSimulation *)> func_
+	);
+	
 	double forceForm
 			(double dist_, bool inbath_);						// Calculates the force for a given distance
 	
@@ -54,8 +64,7 @@ private:
 			std::list<CParticle> & vorticesList_);	// Copy cell linked list into a std::list
 	
 	void temperatureInteraction
-			(std::list<CParticle>::iterator & q_,
-			 double (&tempForce_)[2]);													// Calculates the force due to the thermostat				
+			(double (&tempForce_)[2]);													// Calculates the force due to the thermostat				
 
 	void ApplyBathVelocities
 			(std::list<CParticle>::iterator p_, 
@@ -66,6 +75,9 @@ private:
 			(std::list<CParticle>::iterator p_,
 			 double &velx_,
 			 double & vely_);												// Apply max velocities
+
+	void ApplyMaxVelocities2(CParticle * p_, double &velx_, double & vely_);
+
 
 	void CheckDouble
 			(double num_,
