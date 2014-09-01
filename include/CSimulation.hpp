@@ -181,9 +181,11 @@ private:
 	
 	void DelaunayTriangulation(std::list<CParticle> vorticesList_);
 	
-	void CalculateAvVel();
+	void CalculateAndOutputAvVel();
 	
-	void CalculateFinishTime();
+	void CalculateAndOutputFinishTime();
+	
+	void CalculateAndOutputNd();
 	
 	void CopyJobBatchFile();
 	
@@ -193,11 +195,14 @@ private:
 	
 	void OutputFinalVortexPositions();
 	
-	void OutputPinsList(); 											// Outputs the list of pins.
+	void OutputPinsList(); 											
 	
-	void OutputVortexPositions(); 							// Outputs positions and coord num of vortices using delVortexList
+	void OutputVortexPositions(); 							
 	
 	void OutputSimulationTimes();
+	
+	void OutputAverages();
+	
 	
 	GeometryBase * CreateGeometry();
 	
@@ -241,10 +246,10 @@ private:
 	double A;
 	int Nv;
 	int Nmis;
+	double Nd;
 	double rhov;
 	double source_rhov;
 	double sink_rhov;
-	int ratioOfDefects;
 	double pi;
 	double Phi;
 	double forceRange;

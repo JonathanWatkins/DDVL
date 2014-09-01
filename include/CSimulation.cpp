@@ -85,6 +85,7 @@ CSimulation::CSimulation()
 	binsize=0;
 	Nv=0;
 	Nmis=0;
+	Nd=0;
 	thermostat="";
 	lorentzForce=0;
 	jobtag="";
@@ -133,8 +134,8 @@ void CSimulation::Run()
 	{
 		
 		DoStep();
-		OutputVortexPositions();
-		
+		OutputVortexPositions(); 
+
 	}
 	std::cout << std::endl;
 	std::cout << "-------------------------------------------------" << std::endl;
@@ -142,15 +143,16 @@ void CSimulation::Run()
 	
 	OutputFinalVortexPositions();
 	OutputPinsList();
+	OutputAverages();
+	
 	OutputSimulationTimes();
-
 }
 
 void CSimulation::DoStep()
 {
 	if (0==t%100) std::cout << "t: " << t << std::endl;
 	
-	CalculateFinishTime();
+	CalculateAndOutputFinishTime();
 	
 	geom->ReplaceEscapedVortices();	
 		
@@ -167,9 +169,11 @@ void CSimulation::DoStep()
 	//delVortexList=vorticesList;	
 	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	DTcount++;
-			
-	CalculateAvVel();
 	
+	CalculateAndOutputNd();
+			
+	CalculateAndOutputAvVel();
+		
 	geom->UpdateBathDensities();
 	
 }
@@ -238,9 +242,7 @@ void CSimulation::InitialiseFiles()
 		fileOutputter.addFileStream("jobheader", "jobheader.ini");
 		fileOutputter.addFileStream("posfile", "posdata.txt");
 		fileOutputter.addFileStream("guifile", "guidata.dat");
-		fileOutputter.addFileStream("trajfile", "trajectories.txt");
 		fileOutputter.addFileStream("framevel", "framevel.txt");
-		fileOutputter.addFileStream("CoM", "CoM.txt");
 		fileOutputter.addFileStream("Nd", "Nd.txt");
 		fileOutputter.addFileStream("avfile", "averagesdata.txt");
 		fileOutputter.addFileStream("pinsfile", "pinsdata.txt");
@@ -253,7 +255,7 @@ void CSimulation::InitialiseFiles()
 
 void CSimulation::OutputSimulationTimes()
 {
-
+	std::cout << std::endl << "Simulation times\n----------------\n";
 	endTime = clock();
 	
 	std::cout << "Run Time: " << (endTime-startTime)/(double)CLOCKS_PER_SEC << std::endl;
@@ -264,7 +266,7 @@ void CSimulation::OutputSimulationTimes()
 	
 	std::cout << "DTtime: " << DTtime/(double)DTcount << " per iteration (" << DTcount << ")" << std::endl;
 	std::cout << "ftime: " << ftime/(double)fcount << " per iteration (" << fcount << ")"<< std::endl;
-	
+	std::cout << "----------------" << std::endl;
 }
 
 void CSimulation::CopyJobBatchFile()
@@ -465,7 +467,7 @@ void CSimulation::ReadJobBatchFile()
 	
 }
 
-void CSimulation::CalculateFinishTime()
+void CSimulation::CalculateAndOutputFinishTime()
 {
 	
 	if (0==t%1000)
@@ -483,7 +485,7 @@ void CSimulation::CalculateFinishTime()
 	
 }
 
-void CSimulation::CalculateAvVel()
+void CSimulation::CalculateAndOutputAvVel()
 {
 	/*
 	 *   calculates the space and time average of the x and y velocities of the channel vortices.
@@ -523,7 +525,7 @@ void CSimulation::CalculateAvVel()
 void CSimulation::OutputFinalVortexPositions()
 {
 	// At the end of the simulation, output vortex positions
-	if (t==simulation_time)
+	if (t==simulation_time+1)
 	{
 		
 		for(std::list<CParticle>::iterator p = vorticesList.begin();
@@ -537,6 +539,7 @@ void CSimulation::OutputFinalVortexPositions()
 			}
 		}
 		
+		std::cout << "Writing final vortex positions...done" << std::endl;
 	}
 }
 
@@ -554,7 +557,7 @@ void CSimulation::OutputPinsList()
 	
 	}
 	
-	
+	std::cout << "Writing CE pins positions...done" << std::endl;
 }
 
 void CSimulation::OutputVortexPositions()
@@ -621,3 +624,46 @@ GeometryBase * CSimulation::CreateGeometry()
     }
 }
 
+void CSimulation::OutputAverages()
+{	
+	if (simulation_time+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
+	
+		*fileOutputter.getFS("avfile") << "Time and space averaged quantities" << std::endl
+					 << "  velx of channel vortices: " << get_tAvSAvVelX() << std::endl
+					 << "  vely of channel vortices: " << get_tAvSAvVelY() << std::endl
+					 << "  M2 (just stochastic term): " << get_M2Average() << std::endl
+					 << "  M2 (all terms): " << get_M2FullAverage() << std::endl;
+	
+	std::cout << "Writing final averages...done" << std::endl;
+	
+}
+
+
+void CSimulation::CalculateAndOutputNd()
+{
+	if (t%triangulationInterval!=0)
+		return;
+		
+	Nd=0;
+	Nv=0;
+	Nmis=0;
+	for (std::list<CParticle>::iterator p = delVortexList.begin();
+		p!=delVortexList.end(); ++p)
+	{
+		if (p->get_x() <get_bathLength() || p->get_x()>get_bathLength()+get_channelLength()) continue;
+			if (false==p->get_ghost())
+			{
+				Nv++;
+				
+				if (6!=p->get_coord_num())
+				{
+					Nmis++;
+				}
+				
+			} 
+			
+	}
+	
+	Nd=Nmis/(double)Nv;
+	*fileOutputter.getFS("Nd") << t << " " << Nd << std::endl;
+}
