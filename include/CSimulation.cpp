@@ -17,6 +17,7 @@
 
 // GeometryBase Types
 #include "GeometryChannel.hpp"
+#include "GeometryTube.hpp"
 
 //#include "CParameter.hpp"
 
@@ -619,7 +620,7 @@ GeometryBase * CSimulation::CreateGeometry()
     switch(geometry)
     {
         case 0:  return new GeometryChannel(*this);            break;
-        //case 1:  return new GeometryTube(*this);             break;
+        case 1:  return new GeometryTube(*this);             break;
         default:   throw std::runtime_error("CSimulation:CreateOption()  Bad character");
     }
 }

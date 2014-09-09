@@ -1,23 +1,24 @@
+; geometry 0=channel  1=tube
+;
 [Header]
-runtype=2
 outputType=1
 geometry=0
 simulationTime=100000
 relaxtime=0
-temp=0.06
+temp=0.00001
 lorentzForce=0.0
 
 [Geometry]
-sourceBfield=0.23
-sinkBfield=0.12
+sourceBfield=0.25
+sinkBfield=0.14
 bathLength=20
 bathWidth=8
 channelLength=60
 channelWidth=8
 
 [InputData]
-altPosFile=false
-altPosFileName=gs.txt
+altPosFile=true
+altPosFileName=posdata.txt
 altPinsFile=false
 altPinsFileName=gs.txt
 
@@ -33,7 +34,7 @@ Ap=1
 dt=0.01
 tau=1
 triangulationInterval=5
-framedataInterval=1
+framedataInterval=100
 drawCoordinateGrid=false
 showParticleTracker=false
 thermostat=Anderson
@@ -51,4 +52,4 @@ Phi=0.2067
 lambda=1.11
 
 [Job]
-jobtag=jobtag
+jobtag=velpredict

@@ -51,6 +51,7 @@ include/CFileOutput.cpp
 include/CParallelEulerIntegrator.cpp
 include/GeometryBase.cpp
 include/GeometryChannel.cpp
+include/GeometryTube.cpp
 include/rv_library.cpp
 )
 
