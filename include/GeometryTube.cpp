@@ -40,7 +40,6 @@ GeometryTube::GeometryTube(CSimulation & sim_)
 
 	LoadBatchFile();
 	
-	
 	// calculate system parameters
 	channelOffset = (bathWidth-channelWidth)/2.0;
 	
