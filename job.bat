@@ -3,15 +3,15 @@
 [Header]
 outputType=1
 geometry=0
-simulationTime=100000
+simulationTime=1000000
 relaxtime=0
-temp=0.00001
+temp=0.01
 lorentzForce=0.0
 
 [Geometry]
 sourceBfield=0.25
 sinkBfield=0.14
-bathLength=20
+bathLength=10
 bathWidth=8
 channelLength=60
 channelWidth=8
