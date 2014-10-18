@@ -83,8 +83,8 @@ private:
 
 	void CheckDouble
 			(double num_,
-			 const std::string & varname_,
-			 const std::string & source_);								// Check if double is NAN, inf or undefined 
+			 std::string varname_,
+			 std::string source_);								// Check if double is NAN, inf or undefined 
 
 	void CheckDuplicatePositions
 			(CCell **cell_);									  	// Check for duplicate vortex positions

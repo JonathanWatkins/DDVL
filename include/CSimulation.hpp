@@ -22,8 +22,9 @@
 
 class GeometryBase;
 
-#define channel		 	0
+#define channel		 		0
 #define tube 				1
+#define custom				2
 
 #define BesselType			1
 #define BessLogType			3
@@ -40,6 +41,7 @@ class CSimulation
 {
 	
 	friend class CParallelEulerIntegrator; // should be using pure virtual base instead
+	
 
 public:
 	

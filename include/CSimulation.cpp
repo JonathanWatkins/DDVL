@@ -38,7 +38,7 @@
 
 // Boost libraries
 //#include <boost/ptr_container/ptr_list.hpp>
-#include <boost/math/special_functions/fpclassify.hpp>
+//#include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
@@ -380,11 +380,7 @@ void CSimulation::DelaunayTriangulation( std::list<CParticle> vorticesList_)
 	}
 	
 	std::copy( vorticesVector.begin(), vorticesVector.end(), std::back_inserter( delVortexList ) );
-  
-	// remove lines between baths and channel passing over the CE
-	
-	std::list<CDelLine>::iterator p = delLinesList.begin();
-  
+    
 }
 
 void CSimulation::ReadJobBatchFile() 

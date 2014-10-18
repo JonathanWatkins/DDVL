@@ -41,7 +41,6 @@ av_force_t(sim_->av_force_t)
 	//get parameters from sim class
 	applyStiffBath=sim->get_applyStiffBath();
 	applyMaxVelocities=sim->get_applyMaxVelocities();
-	applyBathVelocities=sim->get_applyBathVelocities();
 	
 	vvForce=sim->get_vvForce();
 	
@@ -966,7 +965,7 @@ void CParallelEulerIntegrator::ApplyMaxVelocities2(CParticle * p_, double &velx_
 //*************************************************************************************************************
 
 
-void CParallelEulerIntegrator::CheckDouble(double num_, const std::string & varname_, const std::string & source_)
+void CParallelEulerIntegrator::CheckDouble(double num_, std::string varname_, std::string source_)
 {
 	if (num_!=num_)
 	{
