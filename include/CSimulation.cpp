@@ -14,6 +14,7 @@
 #include "CRunningStats.hpp"
 #include "delaunay.hpp"
 #include "rv_library.hpp"
+#include "CParallelEulerIntegrator.hpp"
 
 // GeometryBase Types
 // #include "GeometryChannel.hpp"
@@ -64,6 +65,9 @@ CSimulation::CSimulation()
 	geometry=0;
 	jobtag="";
 	t=0;
+	framedataInterval=0;
+	triangulationInterval=0;
+	
 	
 	DTcount=0;
 	fcount=0;
@@ -190,6 +194,10 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	
 	jobtag=ReadVariableFromBatchFile<std::string>("Job.jobtag");  
 	
+	triangulationInterval=ReadVariableFromBatchFile<int>("GeneralParameters.triangulationInterval");
+	
+	framedataInterval=ReadVariableFromBatchFile<int>("GeneralParameters.framedataInterval");
+	
 	AssignJobNumber();
 		
 	// run initial functions
@@ -205,6 +213,8 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	// initialise integrator
 	
 	integrator = new CParallelEulerIntegrator(this);
+	
+	integrator->Initialise();
 	
 	CopyJobBatchFile();
 	
@@ -290,7 +300,7 @@ GeometryBase * CSimulation::CreateGeometry()
     switch(geometry)
     {
         //case 0:  return new GeometryChannel(*this);            break;
-        case 1:  return new GeometryTube(*this);             break;
+        case 1:  return new GeometryTube(this);             break;
         default:   throw std::runtime_error("CSimulation:CreateOption()  Bad character");
     }
 }
@@ -323,3 +333,9 @@ void CSimulation::DelaunayTriangulation()
 	ComputationalGeometry::DelaunayTriangulation(tmp,geom->GetTriangulatedParticlesList(),geom->GetTriangulatedLinesList());	
 }
 
+double CSimulation::get_M2Average() const { return integrator->GetM2Average(); }
+	
+double CSimulation::get_time() const { return integrator->Getdt()*t; };  
+	
+double CSimulation::get_M2FullAverage() const {	return integrator->GetM2FullAverage(); }
+	

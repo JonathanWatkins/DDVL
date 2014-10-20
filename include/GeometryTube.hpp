@@ -22,7 +22,7 @@ class CSimulation;
 class GeometryTube : public GeometryBase
 {
     public:
-        GeometryTube(CSimulation & sim_);
+        GeometryTube(CSimulation * sim_);
         
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // base functions
@@ -41,6 +41,9 @@ class GeometryTube : public GeometryBase
 		double GetXHi() const { return xhi; }
 		double GetYLo() const { return ylo; }
 		double GetYHi() const { return yhi; }
+		double Geta0() const { return a0; }
+		
+		
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific functions
@@ -59,6 +62,7 @@ private:
 		double calcSourceB() const;	
 		void InitialiseRandomAParticles();
 		void InitialiseCEParticles();
+		
 				 
     	// Analysis functions
 		void CalculateAndOutputAvVel();
@@ -75,7 +79,7 @@ private:
 // class specific variables
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX		
         
-        CSimulation & sim;
+        CSimulation * sim;
         
         std::list<CParticle> AParticlesList;
         std::list<CParticle> OtherParticlesList;
@@ -95,7 +99,6 @@ private:
 		double forcerange;
 		std::string pos_file_name;
         std::string pins_file_name;
-        std::string jobBatchFileLocation;
         
         int sourceDensity;
 		int sinkDensity;

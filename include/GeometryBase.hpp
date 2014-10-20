@@ -34,6 +34,8 @@ class GeometryBase
 		virtual double GetXHi() const = 0;
 		virtual double GetYLo() const = 0;
 		virtual double GetYHi() const = 0;
+		virtual double Geta0() const = 0;
+		
 		
 		virtual std::list<CParticle> * GetTriangulatedParticlesList() = 0;
 		virtual std::list<CDelLine> * GetTriangulatedLinesList() = 0;

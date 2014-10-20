@@ -18,8 +18,9 @@
 #include "CBin.hpp"
 #include "CRunningStats.hpp"
 #include "CFileOutput.hpp"
-#include "CParallelEulerIntegrator.hpp"
 #include "GeometryBase.hpp"
+
+class CParallelEulerIntegrator;
 
 
 #define channel		 		0
@@ -55,81 +56,16 @@ public:
 	
 	// getters in header file
 	
-	double get_cellSize() const { return cellSize; };     // integrator owns
-	
-	double get_forceRange() const { return forceRange; };  // integrator owns
-	
-	double get_time() const { return dt*t; };  
-	
-	double get_epsilon()  { return epsilon;  };  // integrator owns
-	
-	double get_sigma()  { return sigma;  };  // integrator owns
-	
-	double get_frame_force_d() const { return frame_force_d; };	  // integrator owns
-	
-	double get_frame_force_t() const { return frame_force_t; };	  // integrator owns
-	
-	double get_av_force_d() const { return av_force_d.get_mean(); };	// integrator owns
-	
-	double get_av_force_t() const { return av_force_t.get_mean(); };	// integrator owns
-	
-	double get_a0() const { 	return a0; }  // geometry owns
-
-	double get_b0() const {	return b0; }  // geometry owns
-
-	double get_lambda() const { return lambda; }   // integrator owns
-		
-	double get_f0bath() const { return f0bath; }  // integrator owns
-		
-	double get_f0() const { return f0; }  // integrator owns
-	
-	double get_binsize() const { return binsize; } 
-
-	double get_f0_rcut_correction() const { return f0_rcut_correction; }  // integrator owns
-
-	double get_f0bath_rcut_correction() const { return f0bath_rcut_correction; }  // integrator owns
-
 	int get_geometry() const {	return geometry; }
 
-	double get_Av() const { return Av; }  
-
-	double get_Rv() const { return Rv; }
-
-	std::list<CParticle>* get_vorticesList() {	return &vorticesList; }
-
-	std::list<CParticle>* get_delVortexList() { return &delVortexList; }
-
-	std::list<CDelLine>* get_delLinesList() { return &delLinesList; }
-
+	
 	int get_t() { return t; }  // sim owns
 
+	int Geta0() {return geom->Geta0(); }
+
 	int get_simulation_time() { return simulation_time; }  // sim owns
-	
+		
 	std::string get_jobBatchFileLocation() const { return jobBatchFileLocation; }  // sim owns
-	
-	double get_temp() const { return temp; }
-
-	double get_A() const { return A; }
-
-	double get_Ap() const { return Ap; }
-
-	double get_dt() const { return dt; }  // integrator owns
-	
-	double get_eta() const { return eta; }
-	
-	bool get_applyMaxVelocities() const { return applyMaxVelocities; }
-	
-	double get_tau() const { return tau; }  // integrator owns
-	
-	double get_kB() const { return kB; }  // integrator owns
-	
-	int get_vvForce() const { return vvForce; }  // integrator owns
-	
-	double get_lorentzForce() const { return lorentzForce; }  // integrator owns
-	
-	double get_Phi() const { return Phi; }  // integrator owns
-	
-	std::string get_thermostat() const { return thermostat; }  // integrator owns
 	
 	double get_xlo()  { return geom->GetXLo(); }  
 
@@ -139,32 +75,17 @@ public:
 	
 	double get_yhi() { return geom->GetYHi(); }
 	
-	double get_M2Average() const { return integrator->GetM2Average(); }
-
-	double get_M2FullAverage() const {	return integrator->GetM2FullAverage(); }
+	double get_M2Average() const;  // integrator owns
+	
+	double get_time() const; // integrator owns
+	
+	double get_M2FullAverage() const; // integrator owns
 	
 	GeometryBase * get_geom() { return geom; }
-		
-	double get_M2Average() const;
 	
-	double get_M2FullAverage() const;
-		
-	double get_tAvSAvVelX() const;
-		
-	double get_tAvSAvVelY() const;
+	template <class classA>
+	classA ReadVariableFromBatchFile(const std::string & var_);
 	
-	// from geom class
-	
-	CParticle get_firstPin() const;
-	
-	double get_channelLength() const;
-
-	double get_channelWidth() const;
-
-	double get_bathLength() const;
-	
-	double get_bathWidth() const;
-
 private:
 	
 	void InitialiseFiles();
@@ -174,8 +95,6 @@ private:
 	void DelaunayTriangulation();
 	
 	void CalculateAndOutputFinishTime();
-	
-	void CalculateAndOutputNd();
 	
 	void CopyJobBatchFile();
 	
@@ -187,18 +106,11 @@ private:
 	
 	void AssignJobNumber();
 	
-	template <class classA>
-	classA ReadVariableFromBatchFile(const std::string & var_);
-
-	
 	GeometryBase * CreateGeometry();
 	
 	GeometryBase * geom;
 	
-	// This is the location of the batch file containing
-	// specific run options
 	std::string jobBatchFileLocation;
-	
 	
 	CParallelEulerIntegrator* integrator;
 		
@@ -215,6 +127,8 @@ private:
 	bool initialised;
 	std::string jobtag;
 	int t;
+	int framedataInterval;
+	int triangulationInterval;
 	
 	// timing variables
 	int DTcount;

@@ -22,31 +22,25 @@
 //	constructor
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-GeometryTube::GeometryTube(CSimulation & sim_)
-:	sim(sim_)
+GeometryTube::GeometryTube(CSimulation * sim_)
 {
+	sim=sim_;
+	
 	bathLength = 0;
 	bathWidth = 0;
 	channelLength = 0;
 	channelWidth = 0;
 	sourceBfield = 0;
 	sinkBfield = 0;
-	Phi = 0;
 	a0 = 0;
 	b0 = 0;
-	dt = 0;
-	forcerange = 0;
 	pos_file_name = "";
-	pins_file_name = "";
-	jobBatchFileLocation = "";
 	
 	sourceDensity = 0;
 	sinkDensity = 0;
 	channelDensity = 0;
-	
 	removesourcex = 0;
 	removesinkx = 0;
-	
 	removetopchannely = 0;
 	removebottomchannely = 0;
 	
@@ -69,77 +63,34 @@ GeometryTube::GeometryTube(CSimulation & sim_)
 void GeometryTube::LoadBatchFile()
 {
 	std::cout << "Loading job batch file..." << std::endl;
-	std::cout << "   from " << jobBatchFileLocation << std::endl;
-	
-	boost::property_tree::ptree pt;
-	boost::property_tree::ini_parser::read_ini(jobBatchFileLocation, pt);
 	
 	// geometry variables
-	a0= pt.get<double>("GeneralParameters.a0");
+	a0= sim->ReadVariableFromBatchFile<double>("GeneralParameters.a0");
 	b0=(std::sqrt((double)3)/2.0)*a0;
 		
-	channelLength=pt.get<double>("Geometry.channelLength")*a0;
-	channelWidth=pt.get<double>("Geometry.channelWidth")*b0;
-	sourceBfield=pt.get<double>("Geometry.sourceBfield");
-	sinkBfield=pt.get<double>("Geometry.sinkBfield");
-	bathLength=pt.get<double>("Geometry.bathLength")*a0;
-	bathWidth=pt.get<double>("Geometry.bathWidth")*b0;
+	channelLength=sim->ReadVariableFromBatchFile<double>("Geometry.channelLength")*a0;
+	channelWidth=sim->ReadVariableFromBatchFile<double>("Geometry.channelWidth")*b0;
+	sourceBfield=sim->ReadVariableFromBatchFile<double>("Geometry.sourceBfield");
+	sinkBfield=sim->ReadVariableFromBatchFile<double>("Geometry.sinkBfield");
+	bathLength=sim->ReadVariableFromBatchFile<double>("Geometry.bathLength")*a0;
+	bathWidth=sim->ReadVariableFromBatchFile<double>("Geometry.bathWidth")*b0;
 	
 	// analysis variables
-	binsize=pt.get<double>("GeneralParameters.binSize");
+	binsize=sim->ReadVariableFromBatchFile<double>("GeneralParameters.binSize");
 		
-	// physics variables and constants
-	pi=pt.get<double>("GeneralParameters.pi");
-	forceRange=pt.get<double>("GeneralParameters.forceRange");
-	eta=pt.get<double>("GeneralParameters.eta");
-	kB=pt.get<double>("GeneralParameters.kB");
-	Ap=pt.get<double>("GeneralParameters.Ap");
-	
-	// simulation variables
-	cellSize=pt.get<double>("GeneralParameters.cellSize");
-	
-	dt=pt.get<double>("GeneralParameters.dt");
-	tau=pt.get<double>("GeneralParameters.tau");
-	triangulationInterval=pt.get<int>("GeneralParameters.triangulationInterval");
-	framedataInterval=pt.get<int>("GeneralParameters.framedataInterval");
-		
-	
-	thermostat=pt.get<std::string>("GeneralParameters.thermostat");
-	
-	alt_pos_file = pt.get<bool>("InputData.altPosFile");
-	if (alt_pos_file == true)
+	if (sim->ReadVariableFromBatchFile<bool>("InputData.altPosFile") == true)
 	{
-			pos_file_name = pt.get<std::string>("InputData.altPosFileName");
+			pos_file_name = sim->ReadVariableFromBatchFile<std::string>("InputData.altPosFileName");
 	
 	}
 	
-	alt_pins_file = pt.get<bool>("InputData.altPinsFile");
-	if (alt_pins_file == true)
-	{
-			pins_file_name = pt.get<std::string>("InputData.altPinsFileName");
-	
-	}
 				
 			
 	// interactions
-	vvForce=pt.get<double>("Interactions.vvForce");
-	Phi=pt.get<double>("Interactions.Phi");
-	//mu0=pt.get<double>("Interactions.mu0");
-	lambda=pt.get<double>("Interactions.lambda");	
 	
 	
-	// channnel disorder
-	disorderDensity=pt.get<double>("GeneralParameters.disorderDensity");
-	disorderStrength=pt.get<double>("GeneralParameters.disorderStrength");
-	disorderRange=pt.get<double>("GeneralParameters.disorderRange");
 	
-	// Job header section
 	
-	outputType=pt.get<int>("Header.outputType");
-	
-	lorentzForce=pt.get<double>("Header.lorentzForce");  
-  
-	temp=pt.get<double>("Header.temp");  
 	
 	std::cout << "   Job Header loaded.\n\n";
 	

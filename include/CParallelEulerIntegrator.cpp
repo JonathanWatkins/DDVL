@@ -18,47 +18,34 @@
 
 // force prototypes
 
-double BesselsForce(const double & dist_, CSimulation *sim_);
-double BessLogForce(const double & dist_, CSimulation *sim_);
-double GaussianForce(const double & dist_,  CSimulation *sim_);
-double GaussianPinForce(const double & dist_, CSimulation *sim_);
-double LJForce(const double & dist_, CSimulation *sim_);
+double BesselsForce(const double & dist_, CParallelEulerIntegrator *integrator_);
 
 
 CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_)
 {
-		
 	// set pointers
 	sim=sim_;
-	
-	//get parameters from sim class
-	applyMaxVelocities=sim->get_applyMaxVelocities();
 		
-	vvForce=sim->get_vvForce();
+	//initialse variables to 0
 	
-	dt=sim->get_dt();
-	eta=sim->get_eta();
-	kB=sim->get_kB();
-	tau=sim->get_tau();
-	Ap=sim->get_Ap();
-	lorentzForce=sim->get_lorentzForce();
-	
-	cellSize=sim->get_cellSize();
-	a0=sim->get_a0();
-	
-	f0=sim->get_f0();
-	f0bath=sim->get_f0bath();
-	thermostat=sim->get_thermostat();
-	b0=sim->get_b0();
-	
-	lambda=sim->get_lambda();
-		
-	// set variables
-	forceRange=sim->get_forceRange();
- 	temp_f0_rcut_correction=BesselsForce(forceRange,false,sim);
-	temp_f0bath_rcut_correction=applyStiffBath==true ? BesselsForce(forceRange,true,sim) : BesselsForce(forceRange,false,sim); 
-	f0_rcut_correction = temp_f0_rcut_correction;
-	f0bath_rcut_correction = temp_f0bath_rcut_correction;
+}
+
+void CParallelEulerIntegrator::Initialise()
+{	
+	//get parameters from file
+	forceRange=sim->ReadVariableFromBatchFile<double>("GeneralParameters.forceRange");
+	eta=sim->ReadVariableFromBatchFile<double>("GeneralParameters.eta");
+	kB=sim->ReadVariableFromBatchFile<double>("GeneralParameters.kB");
+	cellSize=sim->ReadVariableFromBatchFile<double>("GeneralParameters.cellSize");
+	dt=sim->ReadVariableFromBatchFile<double>("GeneralParameters.dt");
+	tau=sim->ReadVariableFromBatchFile<double>("GeneralParameters.tau");
+	thermostat=sim->ReadVariableFromBatchFile<std::string>("GeneralParameters.thermostat");
+	vvForce=sim->ReadVariableFromBatchFile<double>("Interactions.vvForce");
+	Phi=sim->ReadVariableFromBatchFile<double>("Interactions.Phi");
+	lambda=sim->ReadVariableFromBatchFile<double>("Interactions.lambda");	
+	temp=sim->ReadVariableFromBatchFile<double>("Header.temp");  
+	lorentzForce=sim->ReadVariableFromBatchFile<double>("Header.lorentzForce");  
+	a0=sim->Geta0();
 	
 	// cell-linked lists on heap
 	
@@ -70,7 +57,7 @@ CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_)
 		cll[i] = new CCell[MAXLINKEDLISTSIZE];
 		lastcll[i] = new CCell[MAXLINKEDLISTSIZE];
 		
-	};
+	}
 	
 	
 }
@@ -93,9 +80,7 @@ CParallelEulerIntegrator::~CParallelEulerIntegrator()
 
 void CParallelEulerIntegrator::Integrate()
 {
-	//Integrate2();
-	//return;
-	// get this step values
+	
 	M2=0;
 	M2Full=0;
 	
@@ -249,7 +234,7 @@ void CParallelEulerIntegrator::Integrate()
 //
 //*************************************************************************************************************
 
-double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
+/*double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double force=0;
 	
@@ -278,7 +263,7 @@ double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim
 	
 	return force;
 }
-
+*/
 
 //*************************************************************************************************************
 // 
@@ -288,57 +273,48 @@ double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim
 //
 //*************************************************************************************************************
 
-double BesselsForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
+double BesselsForce(const double & dist_, const bool & inbath_, CParallelEulerIntegrator * integrator_)
 {
 	double force=0;
-	// if in bath thislambda and thisf0 should be set to the stiff values
-	double thislambda = inbath_==true ? 0.2*sim_->get_a0() : sim_->get_lambda();
-	//double thisf0 = inbath_==true ? sim_->get_f0bath() : sim_->get_f0();
-	//double thisf0_rcut_correction= inbath_==true ? sim_->get_f0bath_rcut_correction() : sim_->get_f0_rcut_correction();
-	double rcut = sim_->get_forceRange();
-	
-	//double lambda3=thislambda*thislambda*thislambda;
+	double lambda = integrator_->GetLambda();
+	double rcut = integrator_->GetForceRange();
 	
 	if (dist_==0)
 	{
 		std::cout << "zero" << std::endl;
 		force=0.0000000001*fabs(rv::GetNormalVariate());
 	}
-	//else if (dist_< 0.5*sim_->get_a0())
-	//{
-	//	force = thisf0*boost::math::cyl_bessel_k(1,  0.5*sim_->get_a0()/thislambda)-thisf0_rcut_correction;
-	//}
 	else
 	{
-		force = boost::math::cyl_bessel_k(1,  dist_/thislambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
+		force = boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
 		//force = 1.0/dist_ + dist_*dist_*dist_/rcut/rcut/rcut/rcut - 2*dist_/rcut/rcut;
 	}
 	
 	return force;
 }
 
-double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
+/*double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double Av = sim_->get_Av();
 	double Rv = sim_->get_Rv();
 	return Av*2*dist_*exp(-(dist_*dist_)/(double)(Rv*Rv))/Rv/Rv;
 					
-}
+}*/
 
-double GaussianPinForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
+/*double GaussianPinForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double disorderRange = sim_->get_disorderRange();
 	double disorderStrength = sim_->get_disorderStrength();
 	return -disorderStrength*2*dist_*exp(-(dist_*dist_)/(double)(disorderRange*disorderRange))/disorderRange/disorderRange;
 					
-}
+}*/
 
-double LJForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
+/*double LJForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
 {
 	double sigma = sim_->get_sigma();
 	double epsilon = sim_->get_epsilon();
 	return 4.0*epsilon*(12*pow(sigma,12)/pow(dist_,13) - 6*pow(sigma,6)/pow(dist_,7));
-}
+}*/
 
 //*************************************************************************************************************
 // 
@@ -393,7 +369,7 @@ void CParallelEulerIntegrator::vvInteration(
 		std::list<CParticle>::iterator p_,
 		std::list<CParticle> & cell_,  
 		double (&force_)[2],
-		boost::function<double (double,bool, CSimulation *)> func_
+		boost::function<double (double, CParallelEulerIntegrator *)> func_
 		)
 {
 	double forceSum[2]={0,0};
@@ -432,7 +408,7 @@ void CParallelEulerIntegrator::vvInteration(
 		double rhat[2] ={rvector[0]/r,rvector[1]/r};
 		
 		
-		double f=func_(r,inbath_,sim);
+		double f=func_(r,this);
 		//forceForm(r,inbath_);
 		
 		forceSum[0]=forceSum[0]+f*rhat[0];
@@ -589,12 +565,12 @@ void CParallelEulerIntegrator::temperatureInteraction(double (&tempForce_)[2])
 		}
 		
 		if (tempForce_[0]!=tempForce_[0] || tempForce_[1] != tempForce_[1]) {
-			std::cout << "t: " << t << "temp nan" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
+			std::cout << "t: " << sim->get_t() << "temp nan" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
 			tempForce_[0]=0;
 			tempForce_[1]=0;
 		}
 		if (boost::math::isinf(tempForce_[0]) || boost::math::isinf(tempForce_[1]))
-		std::cout << "t: " << t << "temperature inf" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
+		std::cout << "t: " << sim->get_t() << "temperature inf" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
 		//}
 }
 
@@ -612,21 +588,21 @@ void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator
 				return;
 			static int num_corrections=0;
 			static int num_checks=0;
-			static int thist=t;
+			static int thist=sim->get_t();
 			
 			num_checks++;
 			
-			if (t==thist+2)
+			if (sim->get_t()==thist+2)
 			{
 				num_corrections=0;
 				num_checks=0;
 			
 				//std::cout << thist << ", " << t << std::endl;
-				std::cout << "Ratio of corections: " << double(num_corrections)/vorticesList.size() << " (" << num_corrections << "/" << num_checks << ")"<< std::endl;
-				thist=t;
+				std::cout << "Number of vel corections: " << num_corrections << " (" << num_corrections << "/" << num_checks << ")"<< std::endl;
+				thist=sim->get_t();
 			}
 			
-			double maxvel =  0.5*b0/dt;
+			double maxvel =  0.5*a0/dt;
 			 
 			if(velx_>maxvel)
 			{
@@ -738,52 +714,7 @@ void CParallelEulerIntegrator::ClearLinkedLists()
 	
 }
 
-void CParallelEulerIntegrator::vvInteration2(
-		CParticle *  p_,
-		CParticle *  q_,
-		double (&force_)[2],
-		boost::function<double (double,bool, CSimulation *)> func_
-		)
-{
-	double forceSum[2]={0,0};
+double CParallelEulerIntegrator::GetM2Average() const {return M2Sum/sim->get_t();}
 	
-	// do not check interaction between particle and itself
-	if (q_->get_id()==p_->get_id())
-			return;
-			
-	double pxqx = p_->get_x()-q_->get_x();
-	double pyqy = p_->get_y()-q_->get_y();
-		 
-	// r is the distance between points
-	// rvector is the direction from q to p
-	// r hat is the unit vector pointing from q to p
+double CParallelEulerIntegrator::GetM2FullAverage() const {return M2FullSum/sim->get_t();}
 	
-	double r= sqrt( pxqx*pxqx + pyqy*pyqy );
-	
-	// check r is a valid number
-	if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
-	
-	if (boost::math::isinf(r)) throw std::runtime_error ("calculateForces() r is inf");
-
-	//only include vortices closer than the forceRange cutoff								
-	if (r > forceRange)
-			return;
-	
-	// calculate rhat
-	double rvector[2]={pxqx,pyqy};
-	
-	if (r==0)
-		return;
-		
-	double rhat[2] ={rvector[0]/r,rvector[1]/r};
-	
-	
-	double f=func_(r,inbath_,sim);
-	//forceForm(r,inbath_);
-	
-	force_[0]=force_[0]+f*rhat[0];
-	force_[1]=force_[1]+f*rhat[1];
-	
-	
-	
-}

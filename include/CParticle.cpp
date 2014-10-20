@@ -20,7 +20,7 @@ CParticle::CParticle(double x_, double y_, double velx_, double vely_, int coord
 	Tracked=false;
 	in_bubble=false;
 	burgers_circuit_center=false;
-	type='';
+	type='\0';
 	//numTrajPoints=0;
 	
 	//bool actualVortex=false;
