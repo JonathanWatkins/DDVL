@@ -19,8 +19,8 @@
 #include "CRunningStats.hpp"
 #include "CFileOutput.hpp"
 #include "CParallelEulerIntegrator.hpp"
+#include "GeometryBase.hpp"
 
-class GeometryBase;
 
 #define channel		 		0
 #define tube 				1
@@ -55,47 +55,43 @@ public:
 	
 	// getters in header file
 	
-	double get_cellSize() const { return cellSize; };
+	double get_cellSize() const { return cellSize; };     // integrator owns
 	
-	double get_forceRange() const { return forceRange; };
+	double get_forceRange() const { return forceRange; };  // integrator owns
 	
-	double get_time() const { return dt*t; };
+	double get_time() const { return dt*t; };  
 	
-	double get_epsilon()  { return epsilon;  };
+	double get_epsilon()  { return epsilon;  };  // integrator owns
 	
-	double get_sigma()  { return sigma;  };
+	double get_sigma()  { return sigma;  };  // integrator owns
 	
-	double get_frame_force_d() const { return frame_force_d; };	
+	double get_frame_force_d() const { return frame_force_d; };	  // integrator owns
 	
-	double get_frame_force_t() const { return frame_force_t; };	
+	double get_frame_force_t() const { return frame_force_t; };	  // integrator owns
 	
-	double get_av_force_d() const { return av_force_d.get_mean(); };	
+	double get_av_force_d() const { return av_force_d.get_mean(); };	// integrator owns
 	
-	double get_av_force_t() const { return av_force_t.get_mean(); };	
+	double get_av_force_t() const { return av_force_t.get_mean(); };	// integrator owns
 	
-	double get_a0() const { 	return a0; }
+	double get_a0() const { 	return a0; }  // geometry owns
 
-	double get_b0() const {	return b0; }
+	double get_b0() const {	return b0; }  // geometry owns
 
-	double get_lambda() const { return lambda; }
+	double get_lambda() const { return lambda; }   // integrator owns
 		
-	double get_f0bath() const { return f0bath; }
+	double get_f0bath() const { return f0bath; }  // integrator owns
 		
-	double get_f0() const { return f0; }
+	double get_f0() const { return f0; }  // integrator owns
 	
-	double get_binsize() const { return binsize; }
+	double get_binsize() const { return binsize; } 
 
-	double get_disorderRange() const {	return disorderRange; }
-		
-	double get_disorderStrength() const { return disorderStrength; }
+	double get_f0_rcut_correction() const { return f0_rcut_correction; }  // integrator owns
 
-	double get_f0_rcut_correction() const { return f0_rcut_correction; }
-
-	double get_f0bath_rcut_correction() const { return f0bath_rcut_correction; }
+	double get_f0bath_rcut_correction() const { return f0bath_rcut_correction; }  // integrator owns
 
 	int get_geometry() const {	return geometry; }
 
-	double get_Av() const { return Av; }
+	double get_Av() const { return Av; }  
 
 	double get_Rv() const { return Rv; }
 
@@ -103,55 +99,49 @@ public:
 
 	std::list<CParticle>* get_delVortexList() { return &delVortexList; }
 
-	std::list<CParticle>* get_pinsList() {	return &pinsList; }
-
 	std::list<CDelLine>* get_delLinesList() { return &delLinesList; }
 
-	std::list<CParticle>* get_disorderList() {	return &disorderList; }
+	int get_t() { return t; }  // sim owns
 
-	int get_t() { return t; }
-
-	int get_simulation_time() { return simulation_time; }
+	int get_simulation_time() { return simulation_time; }  // sim owns
 	
-	std::string get_jobBatchFileLocation() const { return jobBatchFileLocation; }
+	std::string get_jobBatchFileLocation() const { return jobBatchFileLocation; }  // sim owns
 	
-	int get_Nv() const { return Nv; }
-
-	double get_M2() const { return M2; }
-
-	double get_M2Full() const { return M2Full; }
-
 	double get_temp() const { return temp; }
 
 	double get_A() const { return A; }
 
 	double get_Ap() const { return Ap; }
 
-	double get_dt() const { return dt; }
+	double get_dt() const { return dt; }  // integrator owns
 	
 	double get_eta() const { return eta; }
 	
-	bool get_applyStiffBath() const { return applyStiffBath; }
-	
-	bool get_applyBathVelocities() const { return applyBathVelocities; }
-	
 	bool get_applyMaxVelocities() const { return applyMaxVelocities; }
 	
-	double get_tau() const { return tau; }
+	double get_tau() const { return tau; }  // integrator owns
 	
-	double get_kB() const { return kB; }
+	double get_kB() const { return kB; }  // integrator owns
 	
-	int get_vvForce() const { return vvForce; }
+	int get_vvForce() const { return vvForce; }  // integrator owns
 	
-	double get_lorentzForce() const { return lorentzForce; }
+	double get_lorentzForce() const { return lorentzForce; }  // integrator owns
 	
-	double get_Phi() const { return Phi; }
+	double get_Phi() const { return Phi; }  // integrator owns
 	
-	std::string get_thermostat() const { return thermostat; }
+	std::string get_thermostat() const { return thermostat; }  // integrator owns
 	
-	std::string GetPosFileName() const {return pos_file_name; }
+	double get_xlo()  { return geom->GetXLo(); }  
+
+	double get_xhi() { return geom->GetXHi(); }
+
+	double get_ylo()  { return geom->GetYLo(); }
 	
-	std::string GetPinsFileName() const {return pins_file_name; }
+	double get_yhi() { return geom->GetYHi(); }
+	
+	double get_M2Average() const { return integrator->GetM2Average(); }
+
+	double get_M2FullAverage() const {	return integrator->GetM2FullAverage(); }
 	
 	GeometryBase * get_geom() { return geom; }
 		
@@ -181,9 +171,7 @@ private:
 	
 	void DoStep();
 	
-	void DelaunayTriangulation(std::list<CParticle> vorticesList_);
-	
-	void CalculateAndOutputAvVel();
+	void DelaunayTriangulation();
 	
 	void CalculateAndOutputFinishTime();
 	
@@ -191,20 +179,17 @@ private:
 	
 	void CopyJobBatchFile();
 	
-	void ReadJobBatchFile();
+	void ReadGeometryType();
 	
 	void ConfigureSimulation();
 	
-	void OutputFinalVortexPositions();
-	
-	void OutputPinsList(); 											
-	
-	void OutputVortexPositions(); 							
-	
 	void OutputSimulationTimes();
 	
-	void OutputAverages();
+	void AssignJobNumber();
 	
+	template <class classA>
+	classA ReadVariableFromBatchFile(const std::string & var_);
+
 	
 	GeometryBase * CreateGeometry();
 	
@@ -214,13 +199,7 @@ private:
 	// specific run options
 	std::string jobBatchFileLocation;
 	
-	std::list<CParticle> vorticesList;
-	std::list<CParticle> pinsList;
-	std::list<CParticle> disorderList;
-	std::list<CParticle> delVortexList;
-	std::list<CDelLine> delLinesList;
-	std::list<CDelTriangle> delTrianglesList;
-
+	
 	CParallelEulerIntegrator* integrator;
 		
 	bool running;
@@ -230,80 +209,22 @@ private:
 	int MonitorPeriod;
 	int lasttime;
 	int seedtime;
-	double temp;
+	double startTime;
+	double endTime;
 	std::string jobnum;
-	std::string jobtag;
-	double lorentzForce;
 	bool initialised;
-	int geometry;
-	double a0;
-	double b0;
-	double binsize;
-	int numBins;
-	double M2;
-	double M2Full;
-	double M2Sum;
-	double M2FullSum;
-	int kicks;
-	double A;
-	int Nv;
-	int Nmis;
-	double Nd;
-	double rhov;
-	double source_rhov;
-	double sink_rhov;
-	double pi;
-	double Phi;
-	double forceRange;
-	double eta;
-	double kB;
-	double mu0;
-	double lambda;
-  double f0;
-  double f0bath;
-	double Ap;
-	double f0_rcut_correction;
-	double f0bath_rcut_correction;
-	double Av;
-	double Rv;
-	double epsilon;
-	double sigma;
+	std::string jobtag;
 	int t;
-	double dt;
-	double tau;
-	int triangulationInterval;
-	int framedataInterval;
-	int outputType;
-	bool triangulateReadRun;
-	clock_t startTime;
-	clock_t endTime;
-	std::string thermostat;
+	
+	// timing variables
 	int DTcount;
 	int fcount;
 	double DTtime;
 	double ftime;
-	clock_t timer;
-	double cellSize;
-	int lastchangedSource;
-	int lastchangedSink;		
-	int vvForce;
-	bool applyBathVelocities;
-	bool applyStiffBath;
-	bool applyBounceBack;
-	bool applyMaxVelocities;
-	double disorderDensity;
-	double disorderStrength;
-	double disorderRange;
-	bool alt_pos_file;
-	bool alt_pins_file;
-	std::string pos_file_name;		
-	std::string pins_file_name;
-	double avXVel;
-	double avYVel;
-	double frame_force_d;
-	double frame_force_t;
-	CRunningStats av_force_d;
-	CRunningStats av_force_t;
+	
+	
+	int geometry;
+	
 	CFileOutput fileOutputter;
 	
 };

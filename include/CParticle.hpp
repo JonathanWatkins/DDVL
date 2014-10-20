@@ -18,6 +18,8 @@ private:
   double force_dx, force_dy;
   double force_tx, force_ty;
   
+  char type;
+  
    
   //std::vector<double> *trajectoryx;
   //std::vector<double> *trajectoryy;
@@ -83,6 +85,8 @@ public:
 		Tracked=lhs_.Tracked;
 		in_bubble=lhs_.in_bubble;
 		burgers_circuit_center=lhs_.burgers_circuit_center;
+		type=lhs_.type;
+		
 		
 	}
 	
@@ -176,6 +180,11 @@ public:
 	void set_burgers_circuit_center() { burgers_circuit_center=true;}
 	
 	bool get_burgers_circuit_center() const { return burgers_circuit_center;}
+		
+	void set_type(char type_) { type = type_; }
+	
+	char get_type() { return type; }
+
 		
 	//void add_trajectoryPoint();
 	

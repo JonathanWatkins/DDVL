@@ -24,6 +24,10 @@ public:
 	
 	void Integrate();
 	
+	double GetM2Average() const {return M2Sum/t;}
+	
+	double GetM2FullAverage() const {return M2FullSum/t;}
+	
 private:
 	
 	void Integrate2();
@@ -115,6 +119,9 @@ private:
 	
 	double gaussianRand() const;
 	
+	
+	
+		
 private:	
 	CSimulation* sim;
 	
@@ -140,17 +147,7 @@ private:
 	
 	double cellSize;
 	
-	double channelLength;
-	
-	double channelWidth;
-	
-	double bathLength;
-	
-	double bathWidth;
-	
 	double a0;
-	
-	bool applyBathVelocities;
 	
 	bool applyMaxVelocities;
 	
@@ -159,8 +156,6 @@ private:
 	double tau;
 	
 	int vvForce;
-	
-	double Ap;
 	
 	double lorentzForce;
 	
@@ -178,30 +173,27 @@ private:
 		
 	std::list<CParticle> &vorticesList;
 	
-	double & M2;
+	double M2;
 	
-	double & M2Full;
+	double M2Full;
 	
-	double & M2Sum;
+	double M2Sum;
 	
-	double & M2FullSum;
+	double M2FullSum;
 	
-	double & frame_force_d;
+	double frame_force_d;
 	
-	double & frame_force_t;
+	double frame_force_t;
 	
-	CRunningStats & av_force_d;
+	CRunningStats av_force_d;
 	
-	CRunningStats & av_force_t;
+	CRunningStats av_force_t;
 	
 	int & t;
 	
-	double & temp;
-	
-	
+	double temp;
+		
 	CCell** cll;
-	CCell** cllp;
-	CCell** clldis;
 	CCell** lastcll;
 
 	

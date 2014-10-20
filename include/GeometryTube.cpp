@@ -23,54 +23,158 @@
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 GeometryTube::GeometryTube(CSimulation & sim_)
-:		sim(sim_)
-,   vorticesList(sim_.get_vorticesList())
-,		pinsList(sim_.get_pinsList())
-,   delLinesList(sim_.get_delLinesList())
-,		Phi(sim_.get_Phi())
-,		a0(sim_.get_a0())
-,		b0(sim_.get_b0())
-,		dt(sim_.get_dt())
-,		binsize(sim.get_binsize())
-,   forcerange(sim.get_forceRange())
-,   pos_file_name(sim_.GetPosFileName())
-,		pins_file_name(sim_.GetPinsFileName())
-,		jobBatchFileLocation(sim_.get_jobBatchFileLocation())
+:	sim(sim_)
 {
-
-	LoadBatchFile();
+	bathLength = 0;
+	bathWidth = 0;
+	channelLength = 0;
+	channelWidth = 0;
+	sourceBfield = 0;
+	sinkBfield = 0;
+	Phi = 0;
+	a0 = 0;
+	b0 = 0;
+	dt = 0;
+	forcerange = 0;
+	pos_file_name = "";
+	pins_file_name = "";
+	jobBatchFileLocation = "";
 	
-	// calculate system parameters
-	channelOffset = (bathWidth-channelWidth)/2.0;
+	sourceDensity = 0;
+	sinkDensity = 0;
+	channelDensity = 0;
 	
-	etchsourcex = 0; 
-	etchsinkx = bathLength+channelLength+bathLength; 
+	removesourcex = 0;
+	removesinkx = 0;
 	
-	removesourcex=-a0/2;
-	removesinkx=bathLength+channelLength+bathLength+a0;
+	removetopchannely = 0;
+	removebottomchannely = 0;
 	
-	removetopchannely=-b0/2;//channelOffset-3.0*b0/2;
-	removebottomchannely=channelWidth+b0/2;//channelWidth+channelOffset+3.0*b0/2;
+	etchsourcex = 0;
+	etchsinkx = 0;
+		  
+	binsize = 0;
 	
+	avXVel=0;
+    avYVel=0;
+    
+    xlo=0;
+    ylo=0;
+    xhi=0;
+    yhi=0;
+        
 	
-	sourceDensity=(int)(bathLength*bathWidth*sourceBfield/Phi); 
-	sinkDensity=(int)(bathLength*bathWidth*sinkBfield/Phi); 
-	channelDensity=(int)(channelLength*(channelWidth+b0)*((sourceBfield+sinkBfield)/Phi)/2.0); 	
-	 
-	std::cout << "Tube geometry selected." << std::endl;
 }
 
 void GeometryTube::LoadBatchFile()
 {
+	std::cout << "Loading job batch file..." << std::endl;
+	std::cout << "   from " << jobBatchFileLocation << std::endl;
+	
 	boost::property_tree::ptree pt;
 	boost::property_tree::ini_parser::read_ini(jobBatchFileLocation, pt);
 	
+	// geometry variables
+	a0= pt.get<double>("GeneralParameters.a0");
+	b0=(std::sqrt((double)3)/2.0)*a0;
+		
 	channelLength=pt.get<double>("Geometry.channelLength")*a0;
 	channelWidth=pt.get<double>("Geometry.channelWidth")*b0;
 	sourceBfield=pt.get<double>("Geometry.sourceBfield");
 	sinkBfield=pt.get<double>("Geometry.sinkBfield");
 	bathLength=pt.get<double>("Geometry.bathLength")*a0;
 	bathWidth=pt.get<double>("Geometry.bathWidth")*b0;
+	
+	// analysis variables
+	binsize=pt.get<double>("GeneralParameters.binSize");
+		
+	// physics variables and constants
+	pi=pt.get<double>("GeneralParameters.pi");
+	forceRange=pt.get<double>("GeneralParameters.forceRange");
+	eta=pt.get<double>("GeneralParameters.eta");
+	kB=pt.get<double>("GeneralParameters.kB");
+	Ap=pt.get<double>("GeneralParameters.Ap");
+	
+	// simulation variables
+	cellSize=pt.get<double>("GeneralParameters.cellSize");
+	
+	dt=pt.get<double>("GeneralParameters.dt");
+	tau=pt.get<double>("GeneralParameters.tau");
+	triangulationInterval=pt.get<int>("GeneralParameters.triangulationInterval");
+	framedataInterval=pt.get<int>("GeneralParameters.framedataInterval");
+		
+	
+	thermostat=pt.get<std::string>("GeneralParameters.thermostat");
+	
+	alt_pos_file = pt.get<bool>("InputData.altPosFile");
+	if (alt_pos_file == true)
+	{
+			pos_file_name = pt.get<std::string>("InputData.altPosFileName");
+	
+	}
+	
+	alt_pins_file = pt.get<bool>("InputData.altPinsFile");
+	if (alt_pins_file == true)
+	{
+			pins_file_name = pt.get<std::string>("InputData.altPinsFileName");
+	
+	}
+				
+			
+	// interactions
+	vvForce=pt.get<double>("Interactions.vvForce");
+	Phi=pt.get<double>("Interactions.Phi");
+	//mu0=pt.get<double>("Interactions.mu0");
+	lambda=pt.get<double>("Interactions.lambda");	
+	
+	
+	// channnel disorder
+	disorderDensity=pt.get<double>("GeneralParameters.disorderDensity");
+	disorderStrength=pt.get<double>("GeneralParameters.disorderStrength");
+	disorderRange=pt.get<double>("GeneralParameters.disorderRange");
+	
+	// Job header section
+	
+	outputType=pt.get<int>("Header.outputType");
+	
+	lorentzForce=pt.get<double>("Header.lorentzForce");  
+  
+	temp=pt.get<double>("Header.temp");  
+	
+	std::cout << "   Job Header loaded.\n\n";
+	
+	
+}
+
+void GeometryTube::InitialiseGeometry()
+{
+	LoadBatchFile();
+	InitialiseParameters();
+	InitialiseVortices();
+	InitialiseCE();
+}
+
+void GeometryTube::InitialiseParameters()
+{
+	
+	// calculate system parameters
+		
+	etchsourcex = 0; 
+	etchsinkx = bathLength+channelLength+bathLength; 
+	
+	removesourcex=-a0/2;
+	removesinkx=bathLength+channelLength+bathLength+a0;
+	
+	removetopchannely=-b0/2;
+	removebottomchannely=channelWidth+b0/2;
+	
+	
+	sourceDensity=(int)(bathLength*bathWidth*sourceBfield/Phi); 
+	sinkDensity=(int)(bathLength*bathWidth*sinkBfield/Phi); 
+	channelDensity=(int)(channelLength*(channelWidth+b0)*((sourceBfield+sinkBfield)/Phi)/2.0); 	
+	
+	 
+	std::cout << "Tube geometry selected." << std::endl;
 	
 }
 
@@ -86,29 +190,41 @@ void GeometryTube::InitialiseVortices() const
 	
 	std::ifstream myfile (pos_file_name.c_str());
 	
-	
-	if (myfile.is_open()) 
+	if (myfile.is_open()) // Get all particle positions from file
 	{
 		std::cout << "   " << "Initial Vortex Positions From File" << std::endl;
 		
 		double xval;
 		double yval;
-	
+		char type;
+		
 		while ( myfile.good() )
 		{
-			myfile >> xval;
-			myfile >> yval;
-		
+			myfile >> type >> xval >> yval;
+						
 			CParticle newVortex;
 			newVortex.set_pos(xval,yval);
-			vorticesList->push_back(newVortex);
+			newVortex.set_type(type);
+			if (type=='A') AParticles.push_back(newVortex);  
+			else if OtherParticles.push_back(newVortex);
+				
 	
 		}
 		myfile.close();
 	
 	}
-	else
+	else // Make random mobile particles and CE particles
 	{
+		InitialiseRandomMobileParticles();
+		InitialiseCEParticles()
+	
+	}
+	
+	std::cout << "   " << "initialiseVortices() created " << vorticesList->size() << " vortices." << std::endl << std::endl;
+}
+        
+void InitialiseRandomAParticles()
+{         
 		std::cout << "   " << "no start data" << std::endl;
 		
 		for (int i = 0; i<(sourceDensity);i++)
@@ -120,7 +236,8 @@ void GeometryTube::InitialiseVortices() const
 			CParticle newVortex;
 	
 			newVortex.set_pos(xval,yval);
-			vorticesList->push_back(newVortex);
+			newVortex.set_type('A');
+			AParticlesList.push_back(newVortex);
 	
 		}
 		for (int i = 0; i<(sinkDensity);i++)
@@ -130,35 +247,27 @@ void GeometryTube::InitialiseVortices() const
 			double yval = bathWidth*(rand() % 1000)/1000.0;
 			
 			newVortex.set_pos(xval,yval);
-			vorticesList->push_back(newVortex);
-		
-		
+			newVortex.set_type('A');
+			AParticlesList.push_back(newVortex);
 		}	
-	
-	
-	
 		for (int i = 0; i<(channelDensity);i++)
 		{
 			double xval = channelLength*(rand() % 1000)/1000.0+bathLength;
 			double yval = channelWidth*(rand() % 1000)/1000.0;
 			
-			
 			CParticle newVortex;
 			newVortex.set_pos(xval,yval);
-			vorticesList->push_back(newVortex);
+			newVortex.set_type('A');
+			AParticlesList.push_back(newVortex);
 			
-		}	
-	
-	}
-	
-	std::cout << "   " << "initialiseVortices() created " << vorticesList->size() << " vortices." << std::endl << std::endl;
-}
-         
+		}	         
+}         
+             
 void GeometryTube::ReplaceEscapedVortices() const
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
- 	for (std::list<CParticle>::iterator p = vorticesList->begin();
-			p!=vorticesList->end(); ++p)
+ 	for (std::list<CParticle>::iterator p = AParticlesList.begin();
+			p!=AParticlesList.end(); ++p)
 	{
 		
 		double x = p->get_x();
@@ -204,36 +313,37 @@ void GeometryTube::ReplaceEscapedVortices() const
 	
 }
 
-void GeometryTube::InitialisePins()
+void GeometryTube::InitialiseCEParticles()
 {
-	
-	std::cout << "Initialising pins..." << std::endl;
+	std::cout << "Initialising CE..." << std::endl;
 	
 	double locala0=a0;
 	double localb0=b0;
+		
+	xlo=-3*a0;
+	ylo=-10*localb0;
+	
+	xhi = 2*bathLength+channelLength+3*locala0;
+	yhi = channelWidth+10*localb0-0.1*b0+3*localb0/2.0;
 	
 	double xPos;
+	double yPos=ylo;
 	
 		
-	firstPin.set_pos(-3*a0,-10*localb0-channelOffset);
-	
-	double yPos=firstPin.get_y();
-	
-	//std::cout << "Bottom Limit: " << yPos << std::endl; 
-	//std::cout << "Top Limit: " << bathWidth+6*localb0-channelOffset << std::endl; 
-	
-	while (yPos<channelWidth+10*localb0-channelOffset-0.1*b0)
+	while (yPos<yhi)
 	{
-		xPos=firstPin.get_x();
+		xPos=xl;
 
-	    while (xPos<2*bathLength+channelLength+3*locala0)
+	    while (xPos < xhi)
 	    {
 			CParticle newPin;
 			newPin.set_pos(xPos,yPos+localb0/2.0);
-			pinsList->push_back(newPin);
+			newVortex.set_type('W');
+			OtherParticlesList.push_back(newPin);
 					
 			newPin.set_pos(xPos+locala0/2.0,yPos+3*localb0/2.0);
-			pinsList->push_back(newPin);
+			newVortex.set_type('W');
+			AParticlesList.push_back(newPin);
 			
 			xPos=xPos+locala0;
 			
@@ -241,6 +351,8 @@ void GeometryTube::InitialisePins()
 		
 		yPos=yPos+2*localb0;
 	}
+	
+	yhi = yhi + 3*localb0/2.0; //fiddle
 		
 	//etch source, sink and channel
 	bool removed;
@@ -270,58 +382,28 @@ void GeometryTube::InitialisePins()
 	
 }
 
-void GeometryTube::AddParticlesForDT(std::list<CParticle> & vorticesList_) const
+void GeometryTube::AddParticlesForDT(std::list<CParticle> & list_) const
 {
-
-	for (std::list<CParticle>::iterator p = vorticesList->begin();
-			p!=vorticesList->end(); ++p )
+	newList.insert(AParticlesList.begin(),AParticlesList.end());
+	
+	for (std::list<CParticle>::iterator p = AParticlesList.begin();
+			p!=AParticlesList.end(); ++p )
 	{
 		if (p->get_y() <= 2*b0)
 		{
 			CParticle newVortex;
 			newVortex = (*p);
 			newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+channelWidth+b0);
-			newVortex.set_ghost();
-			vorticesList_.push_back(newVortex);
+			newList.push_back(newVortex);
 		}
 		else if (p->get_y() >= channelWidth-2*b0)
 		{
 			CParticle newVortex;
 			newVortex = (*p);
 			newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-channelWidth-b0);
-			newVortex.set_ghost();
-			vorticesList_.push_back(newVortex);
+			newList.push_back(newVortex);
 		}
 	}
-}
-
-void GeometryTube::WrapSystem() const
-{}
-
-void GeometryTube::InitialiseDisorder() const
-{
-	/*std::cout << "Initialising channel disorder..." << std::endl;
-	
-	std::cout << "   Number of Gaussian pins per a0^2: " << disorderDensity << std::endl;
-	
-	double numberChannelPins=channelLength*channelWidth*disorderDensity/a0/a0;	
-	std::cout << "   Number of Gaussin pins in this channel: " << numberChannelPins << std::endl;
-	
-	std::cout << "   Disorder strength: " << disorderStrength << std::endl;
-	std::cout << "   Disorder range: " << disorderRange << std::endl;
-	
-	
-	for (int i=0; i< numberChannelPins;i++)
-	{
-		double x=bathLength+channelLength*(rand()/(double)RAND_MAX);
-		double y=channelWidth*(rand()/(double)RAND_MAX);
-		CParticle newPin;
-		newPin.set_pos(x,y);
-		disorderList.push_back(newPin);
-	}
-	
-	std::cout << "   Channel disorder initialised." << std::endl << std::endl;
-	*/ 
 }
 
 double GeometryTube::GetRemovalSourceX() const
@@ -333,13 +415,6 @@ double GeometryTube::GetRemovalSinkX() const
 {
 	return 2*bathLength+channelLength - 5*a0;
 } 
-
-CParticle GeometryTube::GetFirstPin() const
-{
-	return firstPin;
-}
-
-
 
 void GeometryTube::UpdateBathDensities() const
 {
@@ -367,8 +442,8 @@ void GeometryTube::UpdateBathDensities() const
 	if (t%1000==0) std::cout << "relaxation time: " << relaxation_time << std::endl;
 	
 	// count densities
-	for (std::list<CParticle>::iterator p = vorticesList->begin();
-			p != vorticesList->end(); ++p)
+	for (std::list<CParticle>::iterator p = AParticlesList.begin();
+			p != AParticlesList.end(); ++p)
 	{
 		if (p->get_x() < bathLength && (p->get_y()<0 || p->get_y()>channelWidth))
 			sourceCount++;
@@ -419,7 +494,8 @@ bool GeometryTube::AddParticleToBath(std::string location_) const
 			xval=xval+a0/2.0;
 		
 			newVortex.set_pos(xval,yval);
-			vorticesList->push_back(newVortex);
+			newVortex.set_type('A');
+			AParticlesList.push_back(newVortex);
 				
 		}
 		else if (location_.compare("sink") == 0)
@@ -435,7 +511,8 @@ bool GeometryTube::AddParticleToBath(std::string location_) const
 			xval = 2*bathLength + channelLength-xval;
 				
 			newVortex.set_pos(xval,yval);
-			vorticesList->push_back(newVortex);
+			newVortex.set_type('A');
+			AParticlesList.push_back(newVortex);
 				
 		}		
 		
@@ -474,8 +551,8 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_) const
 		
 			// calculate which vortices are in removal zone
 			
-			for (std::list<CParticle>::iterator p = vorticesList->begin();
-				p != vorticesList->end(); ++p) {
+			for (std::list<CParticle>::iterator p = AParticlesList.begin();
+				p != AParticlesList.end(); ++p) {
 				
 				if (p->get_x() < removalx)
 				{ 
@@ -499,8 +576,8 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_) const
 			
 		  // calculate which vortices are in removal zone
 			
-			for (std::list<CParticle>::iterator p = vorticesList->begin();
-				p != vorticesList->end(); ++p) {
+			for (std::list<CParticle>::iterator p = AParticlesList.begin();
+				p != vorticesList->AParticlesList.end(); ++p) {
 				if (p->get_x() > removalx)
 				{ 
 					//sinkCount++;
@@ -527,8 +604,8 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_) const
 			//update vorticesList without the removed vortex
 			vorticesList->clear();
 			
-			std::copy( otherVortices.begin(), otherVortices.end(), std::back_inserter( *vorticesList ) );
-			std::copy( targetVortices.begin(), targetVortices.end(), std::back_inserter( *vorticesList ) );
+			std::copy( otherVortices.begin(), otherVortices.end(), std::back_inserter( *AParticlesList ) );
+			std::copy( targetVortices.begin(), targetVortices.end(), std::back_inserter( *AParticlesList ) );
 			
 			if (location_.compare("source") == 0)
 			{
@@ -547,14 +624,13 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_) const
 		
 }
 
-
 double GeometryTube::calcSinkB() const
 {
 	
 	double aaverage=0;
 	int numa=0;
-	for (std::list<CDelLine>::iterator p = delLinesList->begin();
-				p!=delLinesList->end(); ++p)
+	for (std::list<CDelLine>::iterator p = triangulatedLinesList->begin();
+				p!=triangulatedLinesList->end(); ++p)
 	{
 		double midy = (p->get_y1() + p->get_y2())/2.0;
 		double midx = (p->get_x1() + p->get_x2())/2.0;
@@ -581,8 +657,8 @@ double GeometryTube::calcSourceB() const
 	
 	double aaverage=0;
 	int numa=0;
-	for (std::list<CDelLine>::iterator p = delLinesList->begin();
-				p!=delLinesList->end(); ++p)
+	for (std::list<CDelLine>::iterator p = triangulatedLinesList->begin();
+				p!=triangulatedLinesList->end(); ++p)
 	{
 		double midy = (p->get_y1() + p->get_y2())/2.0;
 		double midx = (p->get_x1() + p->get_x2())/2.0;
@@ -603,6 +679,28 @@ double GeometryTube::calcSourceB() const
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
 	
+	
+}
+
+void GeometryTube::PerStepAnalysis()
+{
+	  OutputVortexPositions(); 
+}
+
+void GeometryTube::EndofSimAnalysis()
+{
+	OutputFinalVortexPositions();
+	OutputPinsList();
+	OutputAverages();
+	CalculateAndOutputNd();
+	CalculateAndOutputAvVel();
+	
+}
+
+void GeometryTube::PerStepUpdates()
+{
+	UpdateBathDensities();
+	ReplaceEscapedVortices();	
 	
 }
 
@@ -654,8 +752,185 @@ void GeometryTube::WrapVortices(std::list<CParticle>& vorticesList_) const
 	*/
 }
 
+void GeometryTube::CalculateAndOutputAvVel()
+{
+	/*
+	 *   calculates the space and time average of the x and y velocities of the channel vortices.
+	 * 	 Works for both channel system and tube system.
+	 *   channel vortices are defined as not source or sink vortices.
+	 *   
+	 *   Current avYVel= Sum (Over t) [Sum (All channel vortices)->vely]/num channel vortices ;
+	 *   To get time and space average divide by t
+	 * 
+	 * 	 same for x
+	 */ 
+	double spaceSumX=0;
+	double spaceSumY=0;
+	int count=0;
+	for(std::list<CParticle>::iterator p = vorticesList.begin();
+	    p != vorticesList.end(); p++)
+	{
+		if (p->get_x()>=get_bathLength() && p->get_x() <=get_bathLength()+get_channelLength())
+		{
+			count++;
+			spaceSumX=spaceSumX+p->get_velx();
+			spaceSumY=spaceSumY+p->get_vely();
+			
+			
+		}
+		
+	}
+	
+	
+	avXVel=avXVel+spaceSumX/(double)count;
+	avYVel=avYVel+spaceSumY/(double)count;
+	if (outputType==1) *fileOutputter.getFS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << get_tAvSAvVelX() << " " << get_tAvSAvVelY() << std::endl;
+	
+	
+}
 
- 
+void GeometryTube::OutputFinalVortexPositions()
+{
+	// At the end of the simulation, output vortex positions
+	if (t==simulation_time+1)
+	{
+		
+		for(std::list<CParticle>::iterator p = vorticesList.begin();
+			p != vorticesList.end(); ++p)
+		{
+			*fileOutputter.getFS("posfile") << " " << p->get_x() << " " << p->get_y();
+			
+			if ( std::distance(p,vorticesList.end()) != 1 )
+			{
+				*fileOutputter.getFS("posfile") << std::endl;
+			}
+		}
+		
+		std::cout << "Writing final vortex positions...done" << std::endl;
+	}
+}
+
+void GeometryTube::OutputCE()
+{
+/*	static bool PinsOutputDone = false;
+	// Output the pinsList	
+	if (PinsOutputDone==true)
+			return;
+	
+	PinsOutputDone=true;
+	for (std::list<CParticle>::iterator p = OtherParticlesList.begin();
+				p!=OtherParticlesList.end();++p) {
+		*fileOutputter.getFS("partcilesfile") << " " << p->get_x() << " " << p->get_y() << std::endl;
+	
+	}
+	
+	std::cout << "Writing CE pins positions...done" << std::endl;*/
+}
+
+void GeometryTube::OutputParticlePositions()
+{
+		
+	if (t==1) *fileOutputter.getFS("guifile") << "# This file contains frame data\n"
+																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+	
+	if (t%triangulationInterval!=0 || t%framedataInterval!=0) return;
+	
+	// counts number of active particles
+	int numVortices=0;
+	for (std::list<CParticle>::iterator p = delVortexList.begin();
+		p != delVortexList.end(); ++p)
+	{
+		if (p->get_ghost()!=true)
+		{
+			numVortices++;
+		}				 
+	}
+	
+	
+	*fileOutputter.getFS("guifile") << "{" << t << ", " << numVortices << ", ";
+	
+	
+	bool first=true;
+	for (std::list<CParticle>::iterator p = delVortexList.begin();
+			p != delVortexList.end(); ++p)
+	{
+		
+		if (p->get_ghost()==true) continue;
+
+		
+		if (first==false)
+		{  
+			*fileOutputter.getFS("guifile") << ", ";
+		}
+
+		first = false;
+		*fileOutputter.getFS("guifile") << "{"
+						 << p->get_id() << ", " 
+						 << p->get_x() << ", " 
+						 << p->get_y() << ", " 
+						 << p->get_velx() << ", "
+						 << p->get_vely() << ", "
+						 << p->get_coord_num()
+						 << "}";											
+
+			
+	}
+	
+	*fileOutputter.getFS("guifile") << "}" << std::endl;
+}
+
+void GeometryTube::OutputAverages()
+{	
+	if (simulation_time+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
+	
+		*fileOutputter.getFS("avfile") << "Time and space averaged quantities" << std::endl
+					 << "  velx of channel vortices: " << avXVel/t << std::endl
+					 << "  vely of channel vortices: " << avYVel/t << std::endl
+					 << "  M2 (just stochastic term): " << get_M2Average() << std::endl
+					 << "  M2 (all terms): " << get_M2FullAverage() << std::endl;
+	
+	std::cout << "Writing final averages...done" << std::endl;
+	
+}
+
+void GeometryTube::CalculateAndOutputNd()
+{
+	if (t%triangulationInterval!=0)
+		return;
+		
+	Nd=0;
+	Nv=0;
+	Nmis=0;
+	for (std::list<CParticle>::iterator p = delVortexList.begin();
+		p!=delVortexList.end(); ++p)
+	{
+		if (p->get_x() <get_bathLength() || p->get_x()>get_bathLength()+get_channelLength()) continue;
+			if (false==p->get_ghost())
+			{
+				Nv++;
+				
+				if (6!=p->get_coord_num())
+				{
+					Nmis++;
+				}
+				
+			} 
+			
+	}
+	
+	Nd=Nmis/(double)Nv;
+	*fileOutputter.getFS("Nd") << t << " " << Nd << std::endl;
+}
+
+bool isA (const CParticle & i) { return i.get_Type()=='A' ? true : false; }
+
+void GeometryTube::GetIParticles(std::list<CParticle> & iList) const
+{
+	// just A particles
+	iList.insert(vorticesList.begin(),vorticesList.end());
+	iList.remove_if(isA);
+	
+} 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

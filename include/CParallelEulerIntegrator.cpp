@@ -18,35 +18,23 @@
 
 // force prototypes
 
-double BesselsForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
-double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
-double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
-double GaussianPinForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
-double LJForce(const double & dist_, const bool & inbath_, CSimulation *sim_);
+double BesselsForce(const double & dist_, CSimulation *sim_);
+double BessLogForce(const double & dist_, CSimulation *sim_);
+double GaussianForce(const double & dist_,  CSimulation *sim_);
+double GaussianPinForce(const double & dist_, CSimulation *sim_);
+double LJForce(const double & dist_, CSimulation *sim_);
 
 
-CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_) :
-vorticesList(sim_->vorticesList), t(sim_->t), temp(sim_->temp),
-M2(sim_->M2), M2Full(sim_->M2Full), M2Sum(sim_->M2Sum), 
-M2FullSum(sim_->M2FullSum), frame_force_d(sim_->frame_force_d),
-frame_force_t(sim_->frame_force_t), av_force_d(sim_->av_force_d), 
-av_force_t(sim_->av_force_t)
-
+CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_)
 {
-	
-	
+		
 	// set pointers
 	sim=sim_;
 	
 	//get parameters from sim class
-	applyStiffBath=sim->get_applyStiffBath();
 	applyMaxVelocities=sim->get_applyMaxVelocities();
-	applyBathVelocities=sim->get_applyBathVelocities();
-	
+		
 	vvForce=sim->get_vvForce();
-	
-	pinsList=*sim->get_pinsList();
-	disorderList=*sim->get_disorderList();
 	
 	dt=sim->get_dt();
 	eta=sim->get_eta();
@@ -56,10 +44,6 @@ av_force_t(sim_->av_force_t)
 	lorentzForce=sim->get_lorentzForce();
 	
 	cellSize=sim->get_cellSize();
-	channelLength=sim->get_channelLength();
-	channelWidth=sim->get_channelWidth();
-	bathLength=sim->get_bathLength();
-	bathWidth=sim->get_bathWidth();
 	a0=sim->get_a0();
 	
 	f0=sim->get_f0();
@@ -79,23 +63,16 @@ av_force_t(sim_->av_force_t)
 	// cell-linked lists on heap
 	
 	cll = new CCell*[MAXLINKEDLISTSIZE];
-	cllp = new CCell*[MAXLINKEDLISTSIZE];
-	clldis = new CCell*[MAXLINKEDLISTSIZE];
 	lastcll = new CCell*[MAXLINKEDLISTSIZE];
 	
 	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
 	{
 		cll[i] = new CCell[MAXLINKEDLISTSIZE];
-		cllp[i] = new CCell[MAXLINKEDLISTSIZE];
-		clldis[i] = new CCell[MAXLINKEDLISTSIZE];
 		lastcll[i] = new CCell[MAXLINKEDLISTSIZE];
 		
 	};
 	
-	// These cll do not change during the simulation
-	CreateCellLinkedLists(cllp, pinsList);
-	CreateCellLinkedLists(clldis, disorderList);
-  
+	
 }
 
 
@@ -105,15 +82,11 @@ CParallelEulerIntegrator::~CParallelEulerIntegrator()
 	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
 	{
     delete [] cll[i];
-    delete [] cllp[i];
     delete [] lastcll[i];
-    delete [] clldis[i];
     
 	}
 	delete [] cll;
-	delete [] cllp;
 	delete [] lastcll;
-	delete [] clldis;
 	
 	
 };
@@ -127,17 +100,19 @@ void CParallelEulerIntegrator::Integrate()
 	M2Full=0;
 	
 	// copy the current vorticesList to the lastvorticesList
-	std::list<CParticle> lastvorticesList=vorticesList;
 	
-	sim->get_geom()->WrapVortices(lastvorticesList);
-		
+	std::list<CParticle> vorticesList;
+	std::list<CParticle> lastvorticesList;
+	
+	sim->get_geom()->GetIParticles(vorticesList);
+	sim->get_geom()->GetIParticles(lastvorticesList);
+	
 	// divide the vorticesList and lastvorticesList into cells
 	
 	CreateCellLinkedLists(cll, vorticesList);
 	
 	CreateCellLinkedLists(lastcll, lastvorticesList);
-	
-	
+		
 	
 	// loop over all cll comparing with lastcll and cllp lists
 	
@@ -164,56 +139,16 @@ void CParallelEulerIntegrator::Integrate()
 					// calculate forces due to temperature kick 
 					temperatureInteraction(tempForce);
 					
-					// initialise stress terms
-					double JyyK=0;  // kinetic term
-					double JyyV=0;  // potential term
-		
-					double JxxK=0;  // kinetic term
-					double JxxV=0;  // potential term
-					
-					double JxyK=0;  // kinetic term
-					double JxyV=0;  // potential term
-					
-					double JyxK=0;  // kinetic term
-					double JyxV=0;  // potential term
-					
-					JyyK=0;// -1*q->get_vely()*q->get_vely();
-					JxxK=0;// -1*q->get_velx()*q->get_velx();
-					JxyK=0;// -1*q->get_velx()*q->get_vely();
-					JyxK=0;// -1*q->get_velx()*q->get_vely();
-								
-					
 					// is the vortex in the bath (so will need stiff lattice adjustment
-					bool inbath=false;
-					if (applyStiffBath==true)
-					{
-						if (p->get_x()< bathLength || p->get_x() >bathLength+channelLength)
-							inbath=true;
-					}				
+										
 					// check interation between particles
 					// in this and neighbouring cells
 					for(int k = i-1; k<=i+1;k++)
 					{
 						for(int l = j-1; l<=j+1;l++)
 						{
-							// calculate forces and stresses between vortices lastcll
-							
-							if (vvForce==BesselType)
-							{
-								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,BesselsForce);
-								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,BesselsForce);
-							}
-							else if (vvForce==BessLogType)
-							{
-								vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,JxyV,JyxV,JxxV,JyyV,inbath,BessLogForce);
-								vvInteration(p,(*cllp[k][l].get_cellList()),pinsForce,JxyV,JyxV,JxxV,JyyV,inbath,BessLogForce);
-							}
-							
-							
-							// calculate forces and stresses between quenced disorder 
-							
-							vvInteration(p,(*clldis[k][l].get_cellList()),disorderForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianPinForce);
-												
+							vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,BesselsForce);
+																										
 						}
 					}
 					
@@ -221,8 +156,8 @@ void CParallelEulerIntegrator::Integrate()
 					
 					
 					
-					double forcep_dx = vortexForce[0]+Ap*pinsForce[0]+disorderForce[0]+lorentzForce;
-					double forcep_dy = vortexForce[1]+Ap*pinsForce[1]+disorderForce[1];
+					double forcep_dx = vortexForce[0]+lorentzForce;
+					double forcep_dy = vortexForce[1];
 					
 					double forcep_tx = tempForce[0];
 					double forcep_ty = tempForce[1];
@@ -238,8 +173,6 @@ void CParallelEulerIntegrator::Integrate()
 					// Apply simulation adjustments to velocity
 										
 					ApplyMaxVelocities(p,velx,vely);
-					
-					ApplyBathVelocities(p,velx,vely);			
 					
 					// set velocity then check if valid
 					
@@ -304,160 +237,9 @@ void CParallelEulerIntegrator::Integrate()
 	
 	M2Sum+=M2/vorticesList.size()/dt;
 	M2FullSum+=M2Full/vorticesList.size()/dt;	
-		
-		
-	
 	
 	
 }
-
-void CParallelEulerIntegrator::Integrate2()
-{
-	// get this step values
-	M2=0;
-	M2Full=0;
-	
-	// copy the current vorticesList to the lastvorticesList
-	
-	std::vector<CParticle> vorticesVector;
-	
-	std::copy( vorticesList.begin(), vorticesList.end(), std::back_inserter( vorticesVector ) );
-	
-	std::vector<CParticle> lastvorticesVector=vorticesVector;
-	
-	std::copy( pinsList.begin(), pinsList.end(), std::back_inserter( lastvorticesVector ) );
-	
-	//sim->get_geom()->WrapVortices(lastvorticesList);
-		
-	// loop over all cll comparing with lastcll and cllp lists
-
-	cilk_for (int i = 0; i<vorticesVector.size(); ++i)
-	{
-		double x = vorticesVector[i].get_x();
-		double y = vorticesVector[i].get_y();
-		
-		double tempForce[2]={0,0};
-					
-		// calculate forces due to temperature kick 
-		temperatureInteraction(tempForce);
-		
-		// initialise forces to be zero
-		double force[2]={0,0};
-		double vortexForce[2]={0,0};
-		double disorderForce[2]={0,0};
-		
-		// is the vortex in the bath (so will need stiff lattice adjustment
-		bool inbath=false;
-		if (applyStiffBath==true)
-		{
-			if (x< bathLength || x >bathLength+channelLength)
-				inbath=true;
-		}				
-					
-		
-		for (int j = 0; j<lastvorticesVector.size(); ++j)
-		{
-		
-			// check interation between particles
-			// in this and neighbouring cells
-			if (vvForce==BesselType)
-			{
-				vvInteration2(&vorticesVector[i],&lastvorticesVector[j],vortexForce,inbath,BesselsForce);
-				
-			}
-			else if (vvForce==BessLogType)
-			{
-				vvInteration2(&vorticesVector[i],&lastvorticesVector[j],vortexForce,inbath,BessLogForce);
-			}
-			
-				
-			// calculate forces and stresses between quenced disorder 
-				
-			//vvInteration(p,(*clldis[k][l].get_cellList()),disorderForce,JxyV,JyxV,JxxV,JyyV,inbath,GaussianPinForce);
-		}
-										
-		// set raw velocity
-	
-		double forcep_dx = vortexForce[0]+disorderForce[0]+lorentzForce;
-		double forcep_dy = vortexForce[1]+disorderForce[1];
-		
-		double forcep_tx = tempForce[0];
-		double forcep_ty = tempForce[1];
-		
-		vorticesVector[i].set_force_d_t(forcep_dx, forcep_dy, forcep_tx, forcep_ty);
-							
-		double velx=(forcep_dx + forcep_tx)/eta;
-		double vely=(forcep_dy + forcep_ty)/eta;
-		
-		// Apply simulation adjustments to velocity
-							
-		ApplyMaxVelocities2(&vorticesVector[i],velx,vely);
-		
-		//ApplyBathVelocities(p,velx,vely);			
-		
-		// set velocity then check if valid
-		
-		vorticesVector[i].set_vel(velx,vely);
-		
-		
-	
-							
-		// set last position
-		vorticesVector[i].set_lastpos(x,y);
-		
-		// set new position then check if valid
-		vorticesVector[i].set_pos(x+velx*dt,y+vely*dt);
-									
-					
-			
-			
-			
-	}
-	
-	
-	
-	// updates vortices list
-	vorticesList.clear();
-	std::copy( vorticesVector.begin(), vorticesVector.end(), std::back_inserter( vorticesList ) );
-	
-	
-	// average forces per particle for the system
-	frame_force_d = 0;
-	frame_force_t = 0;
-
-	for (std::list<CParticle>::iterator p = vorticesList.begin();
-		p != vorticesList.end(); ++p )
-	{
-		double forcep_dx= p->get_force_dx();
-		double forcep_dy= p->get_force_dy();
-		double forcep_tx= p->get_force_tx();
-		double forcep_ty= p->get_force_ty();
-		
-		frame_force_d += sqrt(forcep_dx*forcep_dx+forcep_dy*forcep_dy);
-		frame_force_t += sqrt(forcep_tx*forcep_tx+forcep_ty*forcep_ty);
-		
-		M2 += (forcep_tx*dt/eta)*(forcep_tx*dt/eta);
-		M2Full += (p->get_x()-p->get_lastx())*(p->get_x()-p->get_lastx());
-		
-					
-		
-	}			
-		
-	
-	
-	frame_force_d/=vorticesList.size();
-	frame_force_t/=vorticesList.size();
-	
-	av_force_d.add(frame_force_d);
-	av_force_t.add(frame_force_t);
-	
-	M2Sum+=M2/vorticesList.size()/dt;
-	M2FullSum+=M2Full/vorticesList.size()/dt;	
-			
-}
-
-
-
 
 //*************************************************************************************************************
 // 
@@ -611,11 +393,6 @@ void CParallelEulerIntegrator::vvInteration(
 		std::list<CParticle>::iterator p_,
 		std::list<CParticle> & cell_,  
 		double (&force_)[2],
-		double & JxyV_,
-		double & JyxV_,
-		double & JxxV_,
-		double & JyyV_,
-		const bool &inbath_,
 		boost::function<double (double,bool, CSimulation *)> func_
 		)
 {
@@ -724,7 +501,7 @@ void CParallelEulerIntegrator::CellLinkedListToList(CCell** cll_,std::list<CPart
 
 int CParallelEulerIntegrator::what_icell(std::list<CParticle>::iterator a_) const
 {
-	double i= floor((a_->get_x()-sim->get_firstPin().get_x()+2*cellSize)/cellSize);
+	double i= floor((a_->get_x()-sim->get_xlo()+2*cellSize)/cellSize);
 	//std::cout << i << std::endl;
 	if (i!=i)
 	{
@@ -751,7 +528,7 @@ int CParallelEulerIntegrator::what_icell(std::list<CParticle>::iterator a_) cons
 
 int CParallelEulerIntegrator::what_jcell(std::list<CParticle>::iterator a_) const
 {
-	double j= floor((a_->get_y()-sim->get_firstPin().get_y()+2*cellSize)/cellSize);
+	double j= floor((a_->get_y()-sim->get_ylo()+2*cellSize)/cellSize);
 	if (j!=j)
 	{
 		std::stringstream oss;
@@ -821,35 +598,6 @@ void CParallelEulerIntegrator::temperatureInteraction(double (&tempForce_)[2])
 		//}
 }
 
-
-
-//*************************************************************************************************************
-// 
-// Apply Bath Velocities
-//
-//		Increase sink velocity, decrease source velocity.
-//		This process helps with diffussion in the sink and stops
-//		vortices going too fast when added to the source
-//
-//*************************************************************************************************************
-
-void CParallelEulerIntegrator::ApplyBathVelocities(std::list<CParticle>::iterator p_, double & velx_, double & vely_)
-{
-	if (applyBathVelocities==false)
-		return; 
-	if (p_->get_x() >bathLength+channelLength)
-	{ // rescaled viscosity for sink vortices
-		velx_=velx_*2;
-		vely_=vely_*2;
-	}
-	else if (p_->get_x() <bathLength)
-	{ // rescaled viscosity for sink vortices
-		velx_=velx_*0.5;
-		vely_=vely_*0.5;
-	}
-}
-
-
 //*************************************************************************************************************
 // 
 // Apply Max Velocities
@@ -878,7 +626,7 @@ void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator
 				thist=t;
 			}
 			
-			double maxvel = (p_->get_x()<bathLength || p_->get_x()>channelLength+bathLength) ? 0.5*b0/dt : maxvel=0.5*b0/dt;
+			double maxvel =  0.5*b0/dt;
 			 
 			if(velx_>maxvel)
 			{
@@ -905,56 +653,6 @@ void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator
 			}
 			
 }
-
-void CParallelEulerIntegrator::ApplyMaxVelocities2(CParticle * p_, double &velx_, double & vely_)
-{		
-			if (applyMaxVelocities==false)
-				return;
-			static int num_corrections=0;
-			static int num_checks=0;
-			static int thist=t;
-			
-			num_checks++;
-			
-			if (t==thist+2)
-			{
-				num_corrections=0;
-				num_checks=0;
-			
-				//std::cout << thist << ", " << t << std::endl;
-				std::cout << "Ratio of corections: " << double(num_corrections)/vorticesList.size() << " (" << num_corrections << "/" << num_checks << ")"<< std::endl;
-				thist=t;
-			}
-			
-			double maxvel = (p_->get_x()<bathLength || p_->get_x()>channelLength+bathLength) ? 0.5*b0/dt : maxvel=0.5*b0/dt;
-			 
-			if(velx_>maxvel)
-			{
-				velx_=maxvel;
-				num_corrections++;
-			}
-		
-			if(velx_<-maxvel)
-			{
-				velx_=-maxvel;
-				num_corrections++;
-			}
-		
-			if(vely_>maxvel)
-			{
-				vely_=maxvel;
-				num_corrections++;
-			}
-		
-			if(vely_<-maxvel)
-			{
-				vely_=-maxvel;
-				num_corrections++;
-			}
-			
-}
-
-
 
 //*************************************************************************************************************
 // 
@@ -1044,7 +742,6 @@ void CParallelEulerIntegrator::vvInteration2(
 		CParticle *  p_,
 		CParticle *  q_,
 		double (&force_)[2],
-		const bool &inbath_,
 		boost::function<double (double,bool, CSimulation *)> func_
 		)
 {
