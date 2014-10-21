@@ -183,7 +183,7 @@ public:
 		
 	void set_type(char type_) { type = type_; }
 	
-	char get_type() { return type; }
+	char get_type() const { return type; }
 
 		
 	//void add_trajectoryPoint();

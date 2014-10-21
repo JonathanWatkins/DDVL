@@ -57,7 +57,8 @@ public:
 	// getters in header file
 	
 	int get_geometry() const {	return geometry; }
-
+	
+	std::ofstream* get_FS(const std::string & filestr) {return fileOutputter.getFS(filestr);}
 	
 	int get_t() { return t; }  // sim owns
 
@@ -83,8 +84,13 @@ public:
 	
 	GeometryBase * get_geom() { return geom; }
 	
+	int get_triangulationInterval() {return triangulationInterval; }
+	int get_framedataInterval() {return framedataInterval; }
+	
 	template <class classA>
-	classA ReadVariableFromBatchFile(const std::string & var_);
+	void ReadVariableFromBatchFile(classA & to, const std::string & var_);	
+	
+	
 	
 private:
 	
@@ -143,4 +149,19 @@ private:
 	
 };
 
+template <class classA>
+void CSimulation::ReadVariableFromBatchFile(classA & to, const std::string & var_)
+{
+	boost::property_tree::ptree pt;
+	boost::property_tree::ini_parser::read_ini(jobBatchFileLocation, pt);
+	
+	// geometry variables
+	to =  pt.get<classA>(var_);
+	
+}
+
+
+
+
 #endif
+

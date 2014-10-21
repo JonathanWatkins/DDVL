@@ -57,6 +57,9 @@ GeometryTube::GeometryTube(CSimulation * sim_)
     xhi=0;
     yhi=0;
         
+    Nd=0;
+	Nv=0;
+	Nmis=0;    
 	
 }
 
@@ -65,22 +68,28 @@ void GeometryTube::LoadBatchFile()
 	std::cout << "Loading job batch file..." << std::endl;
 	
 	// geometry variables
-	a0= sim->ReadVariableFromBatchFile<double>("GeneralParameters.a0");
+	sim->ReadVariableFromBatchFile(a0, "GeneralParameters.a0");
 	b0=(std::sqrt((double)3)/2.0)*a0;
 		
-	channelLength=sim->ReadVariableFromBatchFile<double>("Geometry.channelLength")*a0;
-	channelWidth=sim->ReadVariableFromBatchFile<double>("Geometry.channelWidth")*b0;
-	sourceBfield=sim->ReadVariableFromBatchFile<double>("Geometry.sourceBfield");
-	sinkBfield=sim->ReadVariableFromBatchFile<double>("Geometry.sinkBfield");
-	bathLength=sim->ReadVariableFromBatchFile<double>("Geometry.bathLength")*a0;
-	bathWidth=sim->ReadVariableFromBatchFile<double>("Geometry.bathWidth")*b0;
+	sim->ReadVariableFromBatchFile(channelLength, "Geometry.channelLength");
+	sim->ReadVariableFromBatchFile(channelWidth, "Geometry.channelWidth");
+	sim->ReadVariableFromBatchFile(sourceBfield, "Geometry.sourceBfield");
+	sim->ReadVariableFromBatchFile(sinkBfield, "Geometry.sinkBfield");
+	sim->ReadVariableFromBatchFile(bathLength, "Geometry.bathLength");
+	sim->ReadVariableFromBatchFile(bathWidth, "Geometry.bathWidth");
+	channelLength*=a0;
+	channelWidth*=b0;
+	bathLength*=a0;
+	channelWidth*=b0;
+	
 	
 	// analysis variables
-	binsize=sim->ReadVariableFromBatchFile<double>("GeneralParameters.binSize");
-		
-	if (sim->ReadVariableFromBatchFile<bool>("InputData.altPosFile") == true)
+	sim->ReadVariableFromBatchFile(binsize, "GeneralParameters.binSize");
+	bool posfile;
+	sim->ReadVariableFromBatchFile(posfile, "InputData.altPosFile");
+	if (posfile == true)
 	{
-			pos_file_name = sim->ReadVariableFromBatchFile<std::string>("InputData.altPosFileName");
+			sim->ReadVariableFromBatchFile(pos_file_name, "InputData.altPosFileName");
 	
 	}
 	
@@ -102,7 +111,7 @@ void GeometryTube::InitialiseGeometry()
 	LoadBatchFile();
 	InitialiseParameters();
 	InitialiseVortices();
-	InitialiseCE();
+	InitialiseCEParticles();
 }
 
 void GeometryTube::InitialiseParameters()
@@ -129,7 +138,7 @@ void GeometryTube::InitialiseParameters()
 	
 }
 
-void GeometryTube::InitialiseVortices() const
+void GeometryTube::InitialiseVortices()
 {
 
 	std::cout << "Initialising Vortices..." << std::endl;
@@ -156,8 +165,8 @@ void GeometryTube::InitialiseVortices() const
 			CParticle newVortex;
 			newVortex.set_pos(xval,yval);
 			newVortex.set_type(type);
-			if (type=='A') AParticles.push_back(newVortex);  
-			else if OtherParticles.push_back(newVortex);
+			if (type=='A') AParticlesList.push_back(newVortex);  
+			else OtherParticlesList.push_back(newVortex);
 				
 	
 		}
@@ -167,14 +176,15 @@ void GeometryTube::InitialiseVortices() const
 	else // Make random mobile particles and CE particles
 	{
 		InitialiseRandomMobileParticles();
-		InitialiseCEParticles()
+		InitialiseCEParticles();
 	
 	}
 	
-	std::cout << "   " << "initialiseVortices() created " << vorticesList->size() << " vortices." << std::endl << std::endl;
+	std::cout 	<< "   " << "initialiseVortices() created " << AParticlesList.size() << " Langevin vortices" 
+				<< " and " << OtherParticlesList.size() << " other votices." << std::endl << std::endl;
 }
         
-void InitialiseRandomAParticles()
+void GeometryTube::InitialiseRandomMobileParticles()
 {         
 		std::cout << "   " << "no start data" << std::endl;
 		
@@ -214,7 +224,7 @@ void InitialiseRandomAParticles()
 		}	         
 }         
              
-void GeometryTube::ReplaceEscapedVortices() const
+void GeometryTube::ReplaceEscapedVortices()
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
  	for (std::list<CParticle>::iterator p = AParticlesList.begin();
@@ -266,8 +276,6 @@ void GeometryTube::ReplaceEscapedVortices() const
 
 void GeometryTube::InitialiseCEParticles()
 {
-	std::cout << "Initialising CE..." << std::endl;
-	
 	double locala0=a0;
 	double localb0=b0;
 		
@@ -283,18 +291,18 @@ void GeometryTube::InitialiseCEParticles()
 		
 	while (yPos<yhi)
 	{
-		xPos=xl;
+		xPos=xlo;
 
 	    while (xPos < xhi)
 	    {
-			CParticle newPin;
-			newPin.set_pos(xPos,yPos+localb0/2.0);
+			CParticle newVortex;
+			newVortex.set_pos(xPos,yPos+localb0/2.0);
 			newVortex.set_type('W');
-			OtherParticlesList.push_back(newPin);
+			OtherParticlesList.push_back(newVortex);
 					
-			newPin.set_pos(xPos+locala0/2.0,yPos+3*localb0/2.0);
+			newVortex.set_pos(xPos+locala0/2.0,yPos+3*localb0/2.0);
 			newVortex.set_type('W');
-			AParticlesList.push_back(newPin);
+			OtherParticlesList.push_back(newVortex);
 			
 			xPos=xPos+locala0;
 			
@@ -308,9 +316,9 @@ void GeometryTube::InitialiseCEParticles()
 	//etch source, sink and channel
 	bool removed;
 	
-	std::list<CParticle>::iterator p= pinsList->begin();
+	std::list<CParticle>::iterator p= OtherParticlesList.begin();
 	
-	while (p!=pinsList->end())
+	while (p!=OtherParticlesList.end())
 	{
 		
 		removed=false;
@@ -318,7 +326,7 @@ void GeometryTube::InitialiseCEParticles()
 		if (  p->get_x() > etchsourcex && p->get_x() < etchsinkx
 		  )
 		{
-			p=pinsList->erase(p);
+			p=OtherParticlesList.erase(p);
 			removed=true;
 		}
 		
@@ -327,15 +335,12 @@ void GeometryTube::InitialiseCEParticles()
 			
 	}
 	
-	std::cout << "   initialisePins() created " << pinsList->size() << " 'CE' vortices." << std::endl <<std::endl;
-	
-	
-	
 }
 
-void GeometryTube::AddParticlesForDT(std::list<CParticle> & list_) const
+void GeometryTube::AddParticlesForDT(std::list<CParticle> & list_)
 {
-	newList.insert(AParticlesList.begin(),AParticlesList.end());
+	std::list<CParticle>::iterator it = list_.begin();
+	list_.insert(it, AParticlesList.begin(),AParticlesList.end());
 	
 	for (std::list<CParticle>::iterator p = AParticlesList.begin();
 			p!=AParticlesList.end(); ++p )
@@ -345,14 +350,14 @@ void GeometryTube::AddParticlesForDT(std::list<CParticle> & list_) const
 			CParticle newVortex;
 			newVortex = (*p);
 			newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+channelWidth+b0);
-			newList.push_back(newVortex);
+			list_.push_back(newVortex);
 		}
 		else if (p->get_y() >= channelWidth-2*b0)
 		{
 			CParticle newVortex;
 			newVortex = (*p);
 			newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-channelWidth-b0);
-			newList.push_back(newVortex);
+			list_.push_back(newVortex);
 		}
 	}
 }
@@ -367,9 +372,9 @@ double GeometryTube::GetRemovalSinkX() const
 	return 2*bathLength+channelLength - 5*a0;
 } 
 
-void GeometryTube::UpdateBathDensities() const
+void GeometryTube::UpdateBathDensities()
 {
-	int t = sim.get_t();
+	int t = sim->get_t();
 	
 	static double lastchangedSource=0;
 	static double lastchangedSink=0;
@@ -388,7 +393,7 @@ void GeometryTube::UpdateBathDensities() const
 	int sinkCount=0;
 	
 	// relaxation time
-	double relaxation_time = a0/fabs(sim.get_tAvSAvVelX())/channelWidth*b0*.75; 
+	double relaxation_time = a0/fabs(avXVel/t)/channelWidth*b0*.75; 
 	
 	if (t%1000==0) std::cout << "relaxation time: " << relaxation_time << std::endl;
 	
@@ -428,9 +433,9 @@ void GeometryTube::UpdateBathDensities() const
 	
 }
 
-bool GeometryTube::AddParticleToBath(std::string location_) const
+bool GeometryTube::AddParticleToBath(std::string location_)
 {
-		int t = sim.get_t();
+		int t = sim->get_t();
 	
 		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
 			throw std::runtime_error("AddParticleToBath() location_ is not source or sink");
@@ -479,9 +484,9 @@ bool GeometryTube::AddParticleToBath(std::string location_) const
 		return true;
 }
 
-bool GeometryTube::RemoveParticleFromBath(std::string location_) const
+bool GeometryTube::RemoveParticleFromBath(std::string location_)
 {
-		int t = sim.get_t();
+		int t = sim->get_t();
 		
 		if (location_.compare("source") != 0 && location_.compare("sink") != 0)
 			throw std::runtime_error("RemoveParticleFromBath() location_ is not source or sink");
@@ -528,7 +533,7 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_) const
 		  // calculate which vortices are in removal zone
 			
 			for (std::list<CParticle>::iterator p = AParticlesList.begin();
-				p != vorticesList->AParticlesList.end(); ++p) {
+				p != AParticlesList.end(); ++p) {
 				if (p->get_x() > removalx)
 				{ 
 					//sinkCount++;
@@ -553,10 +558,10 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_) const
 			targetVortices.erase(p);
 
 			//update vorticesList without the removed vortex
-			vorticesList->clear();
+			AParticlesList.clear();
 			
-			std::copy( otherVortices.begin(), otherVortices.end(), std::back_inserter( *AParticlesList ) );
-			std::copy( targetVortices.begin(), targetVortices.end(), std::back_inserter( *AParticlesList ) );
+			std::copy( otherVortices.begin(), otherVortices.end(), std::back_inserter( AParticlesList ) );
+			std::copy( targetVortices.begin(), targetVortices.end(), std::back_inserter( AParticlesList ) );
 			
 			if (location_.compare("source") == 0)
 			{
@@ -635,13 +640,12 @@ double GeometryTube::calcSourceB() const
 
 void GeometryTube::PerStepAnalysis()
 {
-	  OutputVortexPositions(); 
+	  OutputParticlePositions(); 
 }
 
 void GeometryTube::EndofSimAnalysis()
 {
-	OutputFinalVortexPositions();
-	OutputPinsList();
+	OutputFinalParticlePositions();
 	OutputAverages();
 	CalculateAndOutputNd();
 	CalculateAndOutputAvVel();
@@ -654,7 +658,7 @@ void GeometryTube::PerStepUpdates()
 	ReplaceEscapedVortices();	
 	
 }
-
+/*
 void GeometryTube::WrapVortices(std::list<CParticle>& vorticesList_) const
 {
 	
@@ -690,8 +694,8 @@ void GeometryTube::WrapVortices(std::list<CParticle>& vorticesList_) const
 		std::cout << p->get_x() << " " << p->get_y() << std::endl;
 	}
 	std::cout << "---------------" << std::endl;
-	*/
-	vorticesList_=wrappedVorticesList;
+	/*
+	//vorticesList_=wrappedVorticesList;
 	
 	/*std::cout << "wrappedVorticesList---------" << std::endl;
 	for (std::list<CParticle>::iterator p = vorticesList_.begin();
@@ -701,7 +705,7 @@ void GeometryTube::WrapVortices(std::list<CParticle>& vorticesList_) const
 	}
 	std::cout << "---------------" << std::endl;
 	*/
-}
+//}
 
 void GeometryTube::CalculateAndOutputAvVel()
 {
@@ -718,10 +722,10 @@ void GeometryTube::CalculateAndOutputAvVel()
 	double spaceSumX=0;
 	double spaceSumY=0;
 	int count=0;
-	for(std::list<CParticle>::iterator p = vorticesList.begin();
-	    p != vorticesList.end(); p++)
+	for(std::list<CParticle>::iterator p = AParticlesList.begin();
+	    p != AParticlesList.end(); p++)
 	{
-		if (p->get_x()>=get_bathLength() && p->get_x() <=get_bathLength()+get_channelLength())
+		if (p->get_x()>=bathLength && p->get_x() <=bathLength+channelLength)
 		{
 			count++;
 			spaceSumX=spaceSumX+p->get_velx();
@@ -735,110 +739,98 @@ void GeometryTube::CalculateAndOutputAvVel()
 	
 	avXVel=avXVel+spaceSumX/(double)count;
 	avYVel=avYVel+spaceSumY/(double)count;
-	if (outputType==1) *fileOutputter.getFS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << get_tAvSAvVelX() << " " << get_tAvSAvVelY() << std::endl;
+	int t = sim->get_t();
+	*sim->get_FS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << avXVel/t << " " << avYVel/t << std::endl;
 	
 	
 }
 
-void GeometryTube::OutputFinalVortexPositions()
+void GeometryTube::OutputFinalParticlePositions()
 {
+	int t = sim->get_t();
+	int simulation_time = sim->get_simulation_time();
 	// At the end of the simulation, output vortex positions
-	if (t==simulation_time+1)
+	if (t==sim->get_simulation_time()+1)
 	{
 		
-		for(std::list<CParticle>::iterator p = vorticesList.begin();
-			p != vorticesList.end(); ++p)
+		for(std::list<CParticle>::iterator p = AParticlesList.begin();
+			p != AParticlesList.end(); ++p)
 		{
-			*fileOutputter.getFS("posfile") << " " << p->get_x() << " " << p->get_y();
+			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
 			
-			if ( std::distance(p,vorticesList.end()) != 1 )
+			if ( std::distance(p,AParticlesList.end()) != 1 )
 			{
-				*fileOutputter.getFS("posfile") << std::endl;
+				*sim->get_FS("posfile") << std::endl;
 			}
 		}
+		
+		for(std::list<CParticle>::iterator p = OtherParticlesList.begin();
+			p != OtherParticlesList.end(); ++p)
+		{
+			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+			
+			if ( std::distance(p,OtherParticlesList.end()) != 1 )
+			{
+				*sim->get_FS("posfile") << std::endl;
+			}
+		}
+		
+		
 		
 		std::cout << "Writing final vortex positions...done" << std::endl;
 	}
 }
 
-void GeometryTube::OutputCE()
-{
-/*	static bool PinsOutputDone = false;
-	// Output the pinsList	
-	if (PinsOutputDone==true)
-			return;
-	
-	PinsOutputDone=true;
-	for (std::list<CParticle>::iterator p = OtherParticlesList.begin();
-				p!=OtherParticlesList.end();++p) {
-		*fileOutputter.getFS("partcilesfile") << " " << p->get_x() << " " << p->get_y() << std::endl;
-	
-	}
-	
-	std::cout << "Writing CE pins positions...done" << std::endl;*/
-}
-
 void GeometryTube::OutputParticlePositions()
 {
-		
-	if (t==1) *fileOutputter.getFS("guifile") << "# This file contains frame data\n"
+	int t = sim->get_t();	
+	if (t==1) *sim->get_FS("guifile") << "# This file contains frame data\n"
 																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
 	
-	if (t%triangulationInterval!=0 || t%framedataInterval!=0) return;
+	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
-	int numVortices=0;
-	for (std::list<CParticle>::iterator p = delVortexList.begin();
-		p != delVortexList.end(); ++p)
-	{
-		if (p->get_ghost()!=true)
-		{
-			numVortices++;
-		}				 
-	}
 	
-	
-	*fileOutputter.getFS("guifile") << "{" << t << ", " << numVortices << ", ";
+	*sim->get_FS("guifile") << "{" << t << ", " << triangulatedParticlesList->size() << ", ";
 	
 	
 	bool first=true;
-	for (std::list<CParticle>::iterator p = delVortexList.begin();
-			p != delVortexList.end(); ++p)
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+			p != triangulatedParticlesList->end(); ++p)
 	{
-		
-		if (p->get_ghost()==true) continue;
-
-		
+				
 		if (first==false)
 		{  
-			*fileOutputter.getFS("guifile") << ", ";
+			*sim->get_FS("guifile") << ", ";
 		}
 
 		first = false;
-		*fileOutputter.getFS("guifile") << "{"
-						 << p->get_id() << ", " 
+		*sim->get_FS("guifile") << "{"
+						 << p->get_id() << ", "
+						 << p->get_type() << ", "
+						 << p->get_ghost() << ", "
 						 << p->get_x() << ", " 
 						 << p->get_y() << ", " 
 						 << p->get_velx() << ", "
 						 << p->get_vely() << ", "
-						 << p->get_coord_num()
 						 << "}";											
 
 			
 	}
 	
-	*fileOutputter.getFS("guifile") << "}" << std::endl;
+	*sim->get_FS("guifile") << "}" << std::endl;
 }
 
 void GeometryTube::OutputAverages()
 {	
-	if (simulation_time+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
+	int t = sim->get_t();
+	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
 	
-		*fileOutputter.getFS("avfile") << "Time and space averaged quantities" << std::endl
+		*sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl
 					 << "  velx of channel vortices: " << avXVel/t << std::endl
 					 << "  vely of channel vortices: " << avYVel/t << std::endl
-					 << "  M2 (just stochastic term): " << get_M2Average() << std::endl
-					 << "  M2 (all terms): " << get_M2FullAverage() << std::endl;
+					 << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl
+					 << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
 	
 	std::cout << "Writing final averages...done" << std::endl;
 	
@@ -846,16 +838,16 @@ void GeometryTube::OutputAverages()
 
 void GeometryTube::CalculateAndOutputNd()
 {
-	if (t%triangulationInterval!=0)
+	if (sim->get_t()%sim->get_triangulationInterval()!=0)
 		return;
 		
 	Nd=0;
 	Nv=0;
 	Nmis=0;
-	for (std::list<CParticle>::iterator p = delVortexList.begin();
-		p!=delVortexList.end(); ++p)
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+		p!=triangulatedParticlesList->end(); ++p)
 	{
-		if (p->get_x() <get_bathLength() || p->get_x()>get_bathLength()+get_channelLength()) continue;
+		if (p->get_x() <bathLength || p->get_x()>bathLength+channelLength) continue;
 			if (false==p->get_ghost())
 			{
 				Nv++;
@@ -870,18 +862,52 @@ void GeometryTube::CalculateAndOutputNd()
 	}
 	
 	Nd=Nmis/(double)Nv;
-	*fileOutputter.getFS("Nd") << t << " " << Nd << std::endl;
+	*sim->get_FS("Nd") << sim->get_t() << " " << Nd << std::endl;
 }
 
-bool isA (const CParticle & i) { return i.get_Type()=='A' ? true : false; }
+bool isA (const CParticle & i) { return i.get_type()=='A' ? true : false; }
 
-void GeometryTube::GetIParticles(std::list<CParticle> & iList) const
+void GeometryTube::GetIParticles(std::list<CParticle> & iList)
 {
 	// just A particles
-	iList.insert(vorticesList.begin(),vorticesList.end());
-	iList.remove_if(isA);
+	std::list<CParticle>::iterator it = iList.begin();
+	iList.insert(it,AParticlesList.begin(),AParticlesList.end());
 	
-} 
+}
+
+void GeometryTube::GetJParticles(std::list<CParticle> & iList)
+{
+	std::list<CParticle>::iterator it = iList.begin();
+	iList.insert(it,AParticlesList.begin(),AParticlesList.end());
+	
+	double wrapsize = forcerange;
+	double ysize = channelWidth+b0;
+	 
+	for (std::list<CParticle>::iterator p = AParticlesList.begin();
+		p!=AParticlesList.end(); ++p )
+	{
+			if (p->get_y() <= wrapsize)  // forcerange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
+				newVortex.set_type('B');
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
+				newVortex.set_type('B');
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+	}
+
+}
+ 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

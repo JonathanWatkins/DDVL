@@ -33,9 +33,9 @@ class GeometryTube : public GeometryBase
 		void PerStepUpdates();
 		void InitialiseGeometry();
 		
-		void AddParticlesForDT(std::list<CParticle> & vorticesList_) const;  // returns particles to be triangulated
-		void GetIParticles(std::list<CParticle>& vorticesList_) const;  // returns particles to be integrated
-		void GetJParticles(std::list<CParticle>& vorticesList_) const;  // returns particles seen by integrated particles
+		void AddParticlesForDT(std::list<CParticle> & vorticesList_);  // returns particles to be triangulated
+		void GetIParticles(std::list<CParticle>& vorticesList_);  // returns particles to be integrated
+		void GetJParticles(std::list<CParticle>& vorticesList_);  // returns particles seen by integrated particles
 				
 		double GetXLo() const { return xlo; }
 		double GetXHi() const { return xhi; }
@@ -44,36 +44,38 @@ class GeometryTube : public GeometryBase
 		double Geta0() const { return a0; }
 		
 		
+		std::list<CParticle> * GetTriangulatedParticlesList() {return triangulatedParticlesList; }
+		std::list<CDelLine> * GetTriangulatedLinesList() {return triangulatedLinesList; }
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific functions
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX		
 private:
 		
-		void ReplaceEscapedVortices() const;
-        void InitialiseVortices() const;
+		void ReplaceEscapedVortices();
+        void InitialiseVortices();
         double GetRemovalSourceX() const;
 		double GetRemovalSinkX() const;
-		void UpdateBathDensities() const;
-		bool AddParticleToBath(std::string location_) const;	//		Adds particle to source or sink
-		bool RemoveParticleFromBath(std::string location_) const; 	//		Removes particle from source or sink
+		void UpdateBathDensities();
+		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
+		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
 		void LoadBatchFile();
 		double calcSinkB() const;
 		double calcSourceB() const;	
-		void InitialiseRandomAParticles();
+		void InitialiseRandomMobileParticles();
 		void InitialiseCEParticles();
-		
+		void InitialiseParameters();
 				 
     	// Analysis functions
 		void CalculateAndOutputAvVel();
-		void OutputFinalVortexPositions();
-		void OutputPinsList();
-		void OutputVortexPositions();
+		void OutputFinalParticlePositions();
+		void OutputParticlePositions();
 		void OutputAverages();
 		void CalculateAndOutputNd();
 		
-		std::list<CParticle> * GetTriangulatedParticlesList() {return triangulatedParticlesList; }
-		std::list<CDelLine> * GetTriangulatedLinesList() {return triangulatedLinesList; }
+		
+		
+				
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables
@@ -118,6 +120,10 @@ private:
         double avYVel;
         
         double xlo,ylo, xhi,yhi;
+        
+        int Nd;
+		int Nv;
+		int Nmis;
               
 };
 

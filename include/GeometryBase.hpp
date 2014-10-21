@@ -21,14 +21,14 @@ class GeometryBase
     public:
         virtual ~GeometryBase(){}
         
-        virtual void AddParticlesForDT(std::list<CParticle> & vorticesList_) const = 0;
+        virtual void AddParticlesForDT(std::list<CParticle> & vorticesList_)= 0;
         virtual void PerStepAnalysis() = 0;
 		virtual void EndofSimAnalysis() = 0;
 		virtual void PerStepUpdates() = 0;
 		virtual void InitialiseGeometry() = 0;
 		
-		virtual void GetIParticles(std::list<CParticle>& vorticesList_) const = 0;  
-		virtual void GetJParticles(std::list<CParticle>& vorticesList_) const = 0;
+		virtual void GetIParticles(std::list<CParticle>& vorticesList_)= 0;  
+		virtual void GetJParticles(std::list<CParticle>& vorticesList_) = 0;
 				
 		virtual double GetXLo() const = 0;
 		virtual double GetXHi() const = 0;

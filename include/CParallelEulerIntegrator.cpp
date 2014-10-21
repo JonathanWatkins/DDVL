@@ -33,18 +33,18 @@ CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_)
 void CParallelEulerIntegrator::Initialise()
 {	
 	//get parameters from file
-	forceRange=sim->ReadVariableFromBatchFile<double>("GeneralParameters.forceRange");
-	eta=sim->ReadVariableFromBatchFile<double>("GeneralParameters.eta");
-	kB=sim->ReadVariableFromBatchFile<double>("GeneralParameters.kB");
-	cellSize=sim->ReadVariableFromBatchFile<double>("GeneralParameters.cellSize");
-	dt=sim->ReadVariableFromBatchFile<double>("GeneralParameters.dt");
-	tau=sim->ReadVariableFromBatchFile<double>("GeneralParameters.tau");
-	thermostat=sim->ReadVariableFromBatchFile<std::string>("GeneralParameters.thermostat");
-	vvForce=sim->ReadVariableFromBatchFile<double>("Interactions.vvForce");
-	Phi=sim->ReadVariableFromBatchFile<double>("Interactions.Phi");
-	lambda=sim->ReadVariableFromBatchFile<double>("Interactions.lambda");	
-	temp=sim->ReadVariableFromBatchFile<double>("Header.temp");  
-	lorentzForce=sim->ReadVariableFromBatchFile<double>("Header.lorentzForce");  
+	sim->ReadVariableFromBatchFile(forceRange, "GeneralParameters.forceRange");
+	sim->ReadVariableFromBatchFile(eta, "GeneralParameters.eta");
+	sim->ReadVariableFromBatchFile(kB, "GeneralParameters.kB");
+	sim->ReadVariableFromBatchFile(cellSize, "GeneralParameters.cellSize");
+	sim->ReadVariableFromBatchFile(dt, "GeneralParameters.dt");
+	sim->ReadVariableFromBatchFile(tau, "GeneralParameters.tau");
+	sim->ReadVariableFromBatchFile(thermostat, "GeneralParameters.thermostat");
+	sim->ReadVariableFromBatchFile(vvForce, "Interactions.vvForce");
+	sim->ReadVariableFromBatchFile(Phi, "Interactions.Phi");
+	sim->ReadVariableFromBatchFile(lambda, "Interactions.lambda");	
+	sim->ReadVariableFromBatchFile(temp, "Header.temp");  
+	sim->ReadVariableFromBatchFile(lorentzForce, "Header.lorentzForce");  
 	a0=sim->Geta0();
 	
 	// cell-linked lists on heap
@@ -273,7 +273,7 @@ void CParallelEulerIntegrator::Integrate()
 //
 //*************************************************************************************************************
 
-double BesselsForce(const double & dist_, const bool & inbath_, CParallelEulerIntegrator * integrator_)
+double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_)
 {
 	double force=0;
 	double lambda = integrator_->GetLambda();

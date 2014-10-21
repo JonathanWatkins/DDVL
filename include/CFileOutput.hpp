@@ -20,13 +20,13 @@ class CFileOutput
 	 
 		~CFileOutput();
 		
-		void setJobDirectory(std::string jobNum_);
+		void setJobDirectory(const std::string & jobNum_);
 		
-		void addFileStream(std::string streamName_, std::string fileName_);
+		void addFileStream(const std::string & streamName_, const std::string & fileName_);
 		
-		std::ofstream* getFS(std::string streamName_);
+		std::ofstream* getFS(const std::string & streamName_);
 		
-		bool isFS(std::string streamName_);
+		bool isFS(const std::string & streamName_);
 	
 	private:
 	

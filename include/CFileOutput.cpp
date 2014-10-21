@@ -29,7 +29,7 @@ CFileOutput::CFileOutput()
 //
 //*************************************************************************************************************
 	
-void CFileOutput::setJobDirectory(std::string jobNum_)
+void CFileOutput::setJobDirectory(const std::string &  jobNum_)
 {
 	filecount=0;
 	jobDirectory=jobNum_;
@@ -73,7 +73,7 @@ CFileOutput::~CFileOutput()
 //
 //*************************************************************************************************************
 	
-void CFileOutput::addFileStream(std::string streamName_, std::string fileName_)
+void CFileOutput::addFileStream(const std::string &  streamName_, const std::string &  fileName_)
 {
 	std::ostringstream oss;
 	
@@ -87,7 +87,7 @@ void CFileOutput::addFileStream(std::string streamName_, std::string fileName_)
 	
 	fsptr[filecount]=&newFile[filecount];
 	
-	files.insert ( std::pair<std::string, std::ofstream* >(streamName_, fsptr[filecount] ));
+	files.insert ( std::pair<const std::string , std::ofstream* >(streamName_, fsptr[filecount] ));
 	std::cout << "Initialised " << streamName_ << "(" << fileName_ << ")" << std::endl;
 	
 	
@@ -103,7 +103,7 @@ void CFileOutput::addFileStream(std::string streamName_, std::string fileName_)
 //
 //*************************************************************************************************************
 		
-std::ofstream * CFileOutput::getFS(std::string streamName_)
+std::ofstream * CFileOutput::getFS(const std::string &  streamName_)
 {		
 		return files.find(streamName_)->second;
 	
@@ -117,7 +117,7 @@ std::ofstream * CFileOutput::getFS(std::string streamName_)
 //
 //*************************************************************************************************************
 	
-bool CFileOutput::isFS(std::string streamName_)
+bool CFileOutput::isFS(const std::string &  streamName_)
 {		
 		return files.find(streamName_)!=files.end();
 }

@@ -184,19 +184,19 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 		
 	// which order should these go XXXXXXXXXXXXXXXXXXXXXXXXXXx
 	
-	geometry = ReadVariableFromBatchFile<int>("Header.geometry");  // reads geometry from batch file
+	ReadVariableFromBatchFile(geometry,"Header.geometry");  // reads geometry from batch file
 	
 	geom = CreateGeometry();
 	
 	geom->InitialiseGeometry();
 	
-	simulation_time=ReadVariableFromBatchFile<int>("Header.simulationTime");
+	ReadVariableFromBatchFile(simulation_time,"Header.simulationTime");
 	
-	jobtag=ReadVariableFromBatchFile<std::string>("Job.jobtag");  
+	ReadVariableFromBatchFile<std::string>(jobtag, "Job.jobtag");  
 	
-	triangulationInterval=ReadVariableFromBatchFile<int>("GeneralParameters.triangulationInterval");
+	ReadVariableFromBatchFile(triangulationInterval, "GeneralParameters.triangulationInterval");
 	
-	framedataInterval=ReadVariableFromBatchFile<int>("GeneralParameters.framedataInterval");
+	ReadVariableFromBatchFile(framedataInterval, "GeneralParameters.framedataInterval");
 	
 	AssignJobNumber();
 		
@@ -217,6 +217,8 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	integrator->Initialise();
 	
 	CopyJobBatchFile();
+	
+	initialised=true;
 	
 	std::cout << "Simulation initialised.\n\n";
 		
@@ -305,16 +307,7 @@ GeometryBase * CSimulation::CreateGeometry()
     }
 }
 
-template <class classA>
-classA CSimulation::ReadVariableFromBatchFile(const std::string & var_)
-{
-	boost::property_tree::ptree pt;
-	boost::property_tree::ini_parser::read_ini(jobBatchFileLocation, pt);
-	
-	// geometry variables
-	return pt.get<classA>(var_);
-	
-}
+
 
 void CSimulation::AssignJobNumber()
 {
