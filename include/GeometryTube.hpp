@@ -60,6 +60,7 @@ private:
 		void UpdateBathDensities();
 		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
 		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
+		void WrapVortices(std::list<CParticle>& iList);
 		void LoadBatchFile();
 		double CalcSinkB() const;
 		double CalcSourceB() const;	

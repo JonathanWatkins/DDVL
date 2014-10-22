@@ -155,7 +155,7 @@ void CSimulation::DoStep()
 	fcount++;
 	
 	startclock = clock();
-	DelaunayTriangulation();
+	//DelaunayTriangulation();
 	//delVortexList=vorticesList;	
 	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	DTcount++;
@@ -232,7 +232,7 @@ void CSimulation::InitialiseFiles()
 	fileOutputter.addFileStream("Nd", "Nd.txt");
 	fileOutputter.addFileStream("avfile", "averagesdata.txt");
 	fileOutputter.addFileStream("pinsfile", "pinsdata.txt");
-	
+	fileOutputter.addFileStream("wraptest", "wraptest.txt");
     
 	std::cout << "   Files initialised.\n\n";
 }

@@ -42,6 +42,7 @@ GeometryTube::GeometryTube(CSimulation * sim_)
 	pos_file_name = "";
 	Phi = 0;
 	forcerange=0;
+	dt=0;
 	
 	sourceDensity = 0;
 	sinkDensity = 0;
@@ -86,6 +87,8 @@ void GeometryTube::LoadBatchFile()
 	sim->ReadVariableFromBatchFile(bathWidth, "Geometry.bathWidth");
 	sim->ReadVariableFromBatchFile(Phi, "Interactions.Phi");
 	sim->ReadVariableFromBatchFile(forcerange, "GeneralParameters.forceRange");
+	sim->ReadVariableFromBatchFile(dt, "GeneralParameters.dt");
+	
 	channelLength*=a0;
 	channelWidth*=b0;
 	bathLength*=a0;
@@ -120,7 +123,6 @@ void GeometryTube::InitialiseGeometry()
 	LoadBatchFile();
 	InitialiseParameters();
 	InitialiseVortices();
-	InitialiseCEParticles();
 }
 
 void GeometryTube::InitialiseParameters()
@@ -357,29 +359,29 @@ void GeometryTube::InitialiseCEParticles()
 	
 }
 
-void GeometryTube::AddParticlesForDT(std::list<CParticle> & list_)
+void GeometryTube::AddParticlesForDT(std::list<CParticle> & iList)
 {
-	std::list<CParticle>::iterator it = list_.begin();
-	list_.insert(it, AParticlesList->begin(),AParticlesList->end());
+	// Add A particles
+	iList.clear();
+	std::list<CParticle>::iterator it = iList.end();
+	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
 	
-	/*for (std::list<CParticle>::iterator p = AParticlesList->begin();
-			p!=AParticlesList->end(); ++p )
+	WrapVortices(iList);
+	
+	static bool once = false;
+	if (once == true ) return;
+	for(std::list<CParticle>::iterator p = iList.begin();
+			p != iList.end(); ++p)
 	{
-		if (p->get_y() <= 2*b0)
+		*sim->get_FS("wraptest") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		
+		if ( std::distance(p,iList.end()) != 1 )
 		{
-			CParticle newVortex;
-			newVortex = (*p);
-			newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+channelWidth+b0);
-			list_.push_back(newVortex);
+			*sim->get_FS("wraptest") << std::endl;
 		}
-		else if (p->get_y() >= channelWidth-2*b0)
-		{
-			CParticle newVortex;
-			newVortex = (*p);
-			newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-channelWidth-b0);
-			list_.push_back(newVortex);
-		}
-	}*/
+	}
+	once = true;
+	
 }
 
 double GeometryTube::GetRemovalSourceX() const
@@ -402,7 +404,7 @@ void GeometryTube::UpdateBathDensities()
 	double actualSource = CalcSourceB();
 	double actualSink = CalcSinkB();
 	
-	if (t%100==0) std::cout << sourceBfield << "(" << actualSource << ")       (" << sinkBfield << "(" << actualSink << ")" << std::endl;
+	if (t%sim->get_framedataInterval()==0) std::cout << sourceBfield << "(" << actualSource << ")       (" << sinkBfield << "(" << actualSink << ")" << std::endl;
 		
 	double expectedSource = sourceBfield;
 	double expectedSink = sinkBfield;
@@ -415,7 +417,7 @@ void GeometryTube::UpdateBathDensities()
 	// relaxation time
 	double relaxation_time = a0/fabs(avXVel/t)/channelWidth*b0*.75; 
 	
-	if (t%1000==0) std::cout << "relaxation time: " << relaxation_time << std::endl;
+	if (t%(sim->get_framedataInterval()*10)==0) std::cout << "relaxation time: " << relaxation_time << std::endl;
 	
 	// count densities
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
@@ -668,6 +670,7 @@ double GeometryTube::CalcSourceB() const
 void GeometryTube::PerStepAnalysis()
 {
 	  OutputParticlePositions(); 
+	  CalculateAndOutputAvVel();
 }
 
 void GeometryTube::EndofSimAnalysis()
@@ -675,7 +678,7 @@ void GeometryTube::EndofSimAnalysis()
 	OutputFinalParticlePositions();
 	OutputAverages();
 	CalculateAndOutputNd();
-	CalculateAndOutputAvVel();
+	
 	
 }
 
@@ -685,54 +688,38 @@ void GeometryTube::PerStepUpdates()
 	ReplaceEscapedVortices();	
 	
 }
-/*
-void GeometryTube::WrapVortices(std::list<CParticle>& vorticesList_) const
+
+void GeometryTube::WrapVortices(std::list<CParticle>& iList)
 {
-	
+		
+	// Add periodic y particles	
 	double wrapsize = forcerange;
 	double ysize = channelWidth+b0;
-	std::list<CParticle> wrappedVorticesList;
-	wrappedVorticesList=vorticesList_;
-	 
-	for (std::list<CParticle>::iterator p = vorticesList_.begin();
-		p!=vorticesList_.end(); ++p )
+	
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+		p!=AParticlesList->end(); ++p )
 	{
 			if (p->get_y() <= wrapsize)  // forcerange
 			{
 				CParticle newVortex;
 				newVortex = (*p);
 				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
+				newVortex.set_type('B');
 				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
+				iList.push_back(newVortex);
 			}
 			if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
 			{
 				CParticle newVortex;
 				newVortex = (*p);
 				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
+				newVortex.set_type('B');
 				newVortex.set_ghost();
-				wrappedVorticesList.push_back(newVortex);
+				iList.push_back(newVortex);
 			}
 	}
-	/*std::cout << "VorticesList---------" << std::endl;
-	for (std::list<CParticle>::iterator p = vorticesList_.begin();
-		p!=vorticesList_.end(); ++p )
-	{
-		std::cout << p->get_x() << " " << p->get_y() << std::endl;
-	}
-	std::cout << "---------------" << std::endl;
-	/*
-	//vorticesList_=wrappedVorticesList;
-	
-	/*std::cout << "wrappedVorticesList---------" << std::endl;
-	for (std::list<CParticle>::iterator p = vorticesList_.begin();
-		p!=vorticesList_.end(); ++p )
-	{
-		std::cout << p->get_x() << " " << p->get_y() << std::endl;
-	}
-	std::cout << "---------------" << std::endl;
-	*/
-//}
+
+}
 
 void GeometryTube::CalculateAndOutputAvVel()
 {
@@ -768,6 +755,7 @@ void GeometryTube::CalculateAndOutputAvVel()
 	avYVel=avYVel+spaceSumY/(double)count;
 	int t = sim->get_t();
 	*sim->get_FS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << avXVel/t << " " << avYVel/t << std::endl;
+	if (t%sim->get_framedataInterval()==0) std::cout << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << avXVel/t << " " << avYVel/t << std::endl;
 	
 	
 }
@@ -902,34 +890,16 @@ std::list<CParticle> * GeometryTube::GetIParticles()
 
 void GeometryTube::GetJParticles(std::list<CParticle> & iList)
 {
-	std::list<CParticle>::iterator it = iList.begin();
+	// Add A particles
+	iList.clear();
+	std::list<CParticle>::iterator it = iList.end();
 	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
-	
-	double wrapsize = forcerange;
-	double ysize = channelWidth+b0;
-	 
-	for (std::list<CParticle>::iterator p = AParticlesList->begin();
-		p!=AParticlesList->end(); ++p )
-	{
-			if (p->get_y() <= wrapsize)  // forcerange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
-				newVortex.set_type('B');
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
-				newVortex.set_type('B');
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-	}
+
+
+	// Add CE particles
+	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
+
+	WrapVortices(iList);
 
 }
  
