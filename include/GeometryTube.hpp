@@ -34,8 +34,9 @@ class GeometryTube : public GeometryBase
 		void InitialiseGeometry();
 		
 		void AddParticlesForDT(std::list<CParticle> & vorticesList_);  // returns particles to be triangulated
-		void GetIParticles(std::list<CParticle>& vorticesList_);  // returns particles to be integrated
+		std::list<CParticle> * GetIParticles();  // returns particles to be integrated
 		void GetJParticles(std::list<CParticle>& vorticesList_);  // returns particles seen by integrated particles
+		 
 				
 		double GetXLo() const { return xlo; }
 		double GetXHi() const { return xhi; }
@@ -60,8 +61,8 @@ private:
 		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
 		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
 		void LoadBatchFile();
-		double calcSinkB() const;
-		double calcSourceB() const;	
+		double CalcSinkB() const;
+		double CalcSourceB() const;	
 		void InitialiseRandomMobileParticles();
 		void InitialiseCEParticles();
 		void InitialiseParameters();
@@ -83,8 +84,8 @@ private:
         
         CSimulation * sim;
         
-        std::list<CParticle> AParticlesList;
-        std::list<CParticle> OtherParticlesList;
+        std::list<CParticle> * AParticlesList;
+        std::list<CParticle> * OtherParticlesList;
         std::list<CParticle> * triangulatedParticlesList;
         std::list<CDelLine> * triangulatedLinesList;
         

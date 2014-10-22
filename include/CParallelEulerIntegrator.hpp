@@ -41,7 +41,7 @@ private:
 	
 	void CreateCellLinkedLists(
 		CCell ** cll_,
-		std::list<CParticle> & list_);						// Creates two cell linked lists from pinsList and lastvorticesList
+		std::list<CParticle> * list_);						// Creates two cell linked lists from pinsList and lastvorticesList
 
 	void CopyCellLinkedList(
 		CCell ** cllsource_,
@@ -59,7 +59,7 @@ private:
 	
 	void CellLinkedListToList
 			(CCell** cll_,
-			std::list<CParticle> & vorticesList_);	// Copy cell linked list into a std::list
+			std::list<CParticle> * vorticesList_);	// Copy cell linked list into a std::list
 	
 	void temperatureInteraction
 			(double (&tempForce_)[2]);													// Calculates the force due to the thermostat				
@@ -105,8 +105,7 @@ private:
 	double b0;
 	double lambda;
 	double temp;
-	double Phi;
-	// reference variables
+		// reference variables
 	double M2;
 	double M2Full;
 	double M2Sum;

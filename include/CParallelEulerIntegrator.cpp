@@ -41,7 +41,6 @@ void CParallelEulerIntegrator::Initialise()
 	sim->ReadVariableFromBatchFile(tau, "GeneralParameters.tau");
 	sim->ReadVariableFromBatchFile(thermostat, "GeneralParameters.thermostat");
 	sim->ReadVariableFromBatchFile(vvForce, "Interactions.vvForce");
-	sim->ReadVariableFromBatchFile(Phi, "Interactions.Phi");
 	sim->ReadVariableFromBatchFile(lambda, "Interactions.lambda");	
 	sim->ReadVariableFromBatchFile(temp, "Header.temp");  
 	sim->ReadVariableFromBatchFile(lorentzForce, "Header.lorentzForce");  
@@ -86,17 +85,19 @@ void CParallelEulerIntegrator::Integrate()
 	
 	// copy the current vorticesList to the lastvorticesList
 	
-	std::list<CParticle> vorticesList;
+	std::list<CParticle> * vorticesList = sim->get_geom()->GetIParticles();
 	std::list<CParticle> lastvorticesList;
 	
-	sim->get_geom()->GetIParticles(vorticesList);
-	sim->get_geom()->GetIParticles(lastvorticesList);
 	
+	sim->get_geom()->GetJParticles(lastvorticesList);
+	
+	//std::cout << "vorticesList->size(): " << vorticesList->size() << std::endl;
+	//std::cout << "lastvorticesList.size(): " << lastvorticesList.size() << std::endl;
 	// divide the vorticesList and lastvorticesList into cells
 	
 	CreateCellLinkedLists(cll, vorticesList);
 	
-	CreateCellLinkedLists(lastcll, lastvorticesList);
+	CreateCellLinkedLists(lastcll, &lastvorticesList);
 		
 	
 	// loop over all cll comparing with lastcll and cllp lists
@@ -186,16 +187,17 @@ void CParallelEulerIntegrator::Integrate()
 	//CheckDuplicatePositions(cll);
 	
 	// updates vortices list
-	vorticesList.clear();
+	vorticesList->clear();
 	CellLinkedListToList(cll,vorticesList);
+	
 	ClearLinkedLists();
 	
 	// average forces per particle for the system
 	frame_force_d = 0;
 	frame_force_t = 0;
 
-	for (std::list<CParticle>::iterator p = vorticesList.begin();
-		p != vorticesList.end(); ++p )
+	for (std::list<CParticle>::iterator p = vorticesList->begin();
+		p != vorticesList->end(); ++p )
 	{
 		double forcep_dx= p->get_force_dx();
 		double forcep_dy= p->get_force_dy();
@@ -214,14 +216,14 @@ void CParallelEulerIntegrator::Integrate()
 		
 	
 	
-	frame_force_d/=vorticesList.size();
-	frame_force_t/=vorticesList.size();
+	frame_force_d/=vorticesList->size();
+	frame_force_t/=vorticesList->size();
 	
 	av_force_d.add(frame_force_d);
 	av_force_t.add(frame_force_t);
 	
-	M2Sum+=M2/vorticesList.size()/dt;
-	M2FullSum+=M2Full/vorticesList.size()/dt;	
+	M2Sum+=M2/vorticesList->size()/dt;
+	M2FullSum+=M2Full/vorticesList->size()/dt;	
 	
 	
 }
@@ -323,11 +325,11 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_
 //
 //*************************************************************************************************************
 
-void CParallelEulerIntegrator::CreateCellLinkedLists( CCell ** cll_, std::list<CParticle> & list_ )
+void CParallelEulerIntegrator::CreateCellLinkedLists( CCell ** cll_, std::list<CParticle> * list_ )
 {
 
-	for(std::list<CParticle>::iterator q = list_.begin();
-			q != list_.end(); q++)
+	for(std::list<CParticle>::iterator q = list_->begin();
+			q != list_->end(); q++)
 	{
 		
 		cll_[what_icell(q)][what_jcell(q)].add_particle(*q); 
@@ -460,13 +462,15 @@ double CParallelEulerIntegrator::forceForm(double dist_, bool inbath_)
 //
 //*************************************************************************************************************
 
-void CParallelEulerIntegrator::CellLinkedListToList(CCell** cll_,std::list<CParticle> & vorticesList_)
+void CParallelEulerIntegrator::CellLinkedListToList(CCell** cll_,std::list<CParticle> * vorticesList_)
 {
 	for(int i = 0; i < MAXLINKEDLISTSIZE; ++i)
 	{
 		for(int j = 0; j < MAXLINKEDLISTSIZE; ++j)
 		{
-			std::copy( (*cll_[i][j].get_cellList()).begin(), (*cll_[i][j].get_cellList()).end(), std::back_inserter( vorticesList_ ) );
+			std::list<CParticle>::iterator it = vorticesList_->begin();
+			vorticesList_->insert(it,(*cll_[i][j].get_cellList()).begin(), (*cll_[i][j].get_cellList()).end());
+			//std::copy( (*cll_[i][j].get_cellList()).begin(), (*cll_[i][j].get_cellList()).end(), std::back_inserter( vorticesList_ ) );
   		
 		}
 	}
@@ -598,7 +602,7 @@ void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator
 				num_checks=0;
 			
 				//std::cout << thist << ", " << t << std::endl;
-				std::cout << "Number of vel corections: " << num_corrections << " (" << num_corrections << "/" << num_checks << ")"<< std::endl;
+				//std::cout << "Number of vel corections: " << num_corrections << " (" << num_corrections << "/" << num_checks << ")"<< std::endl;
 				thist=sim->get_t();
 			}
 			

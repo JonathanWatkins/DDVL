@@ -132,7 +132,6 @@ void CSimulation::Run()
 	
 	for (t=1; t<=simulation_time; ++t)
 	{
-		
 		DoStep();
 		geom->PerStepAnalysis();
 
@@ -140,31 +139,23 @@ void CSimulation::Run()
 	std::cout << std::endl;
 	std::cout << "-------------------------------------------------" << std::endl;
 	std::cout << "Simulation finished." << std::endl << std::endl; 
-	
 	geom->EndofSimAnalysis();
-	
 	OutputSimulationTimes();
 }
 
 void CSimulation::DoStep()
 {
 	if (0==t%100) std::cout << "t: " << t << std::endl;
-	
 	CalculateAndOutputFinishTime();
-	
 	geom->PerStepUpdates();
-		
-	clock_t startclock = clock();
-		
-	integrator->Integrate();
 	
+	clock_t startclock = clock();
+	integrator->Integrate();
 	ftime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	fcount++;
 	
 	startclock = clock();
-	
 	DelaunayTriangulation();
-	
 	//delVortexList=vorticesList;	
 	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	DTcount++;
@@ -202,7 +193,7 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 		
 	// run initial functions
 	
-	//InitialiseFiles();
+	InitialiseFiles();
 	
 	// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	
@@ -321,6 +312,7 @@ void CSimulation::AssignJobNumber()
 
 void CSimulation::DelaunayTriangulation()
 {
+	
 	std::list<CParticle> tmp;
 	geom->AddParticlesForDT(tmp);
 	ComputationalGeometry::DelaunayTriangulation(tmp,geom->GetTriangulatedParticlesList(),geom->GetTriangulatedLinesList());	
@@ -331,4 +323,6 @@ double CSimulation::get_M2Average() const { return integrator->GetM2Average(); }
 double CSimulation::get_time() const { return integrator->Getdt()*t; };  
 	
 double CSimulation::get_M2FullAverage() const {	return integrator->GetM2FullAverage(); }
+
+double CSimulation::get_forcerange() { return integrator->GetForceRange(); }
 	

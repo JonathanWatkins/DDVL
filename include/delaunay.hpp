@@ -1033,18 +1033,21 @@ void ComputationalGeometry::DelaunayTriangulation(const std::list<CParticle> &vo
 	delVortexList_->clear();
 	delLinesList_->clear();
 	
+	//std::cout << "a421" << std::endl;
+	
 	std::list<CLineIDs> lines;
 	
 	/* Define input points. */
 
 	int numberofpoints = vorticesList_.size();
-  
+	if (numberofpoints==0) return;
 	point2d pointlist[100000];
-	
+	//std::cout << "a422" << std::endl;
 	std::vector<CParticle> vorticesVector;
-	
+	//std::cout << "a423" << std::endl;
 	std::copy( vorticesList_.begin(), vorticesList_.end(), std::back_inserter( vorticesVector ) );
-  
+	//std::cout << "vorticesVector.size(): " << vorticesVector.size() << std::endl;
+	//std::cout << "a424" << std::endl;
 	int count=0;
 	for (std::vector<CParticle>::iterator p = vorticesVector.begin();
 			p!=vorticesVector.end(); ++p )
@@ -1054,12 +1057,13 @@ void ComputationalGeometry::DelaunayTriangulation(const std::list<CParticle> &vo
 		pointlist[count].y = p->get_y();
 		count++;
 	}
+	//std::cout << "a425" << std::endl;
 	
 	
 	int *faces = NULL;
 	
 	int num_faces = delaunay2d((double*)pointlist,numberofpoints,&faces);
-	
+	//std::cout << "a426" << std::endl;
 	int offset = 0;
 	
 	//std::cout << "lines: " << lines.size() << std::endl;
@@ -1102,7 +1106,7 @@ void ComputationalGeometry::DelaunayTriangulation(const std::list<CParticle> &vo
 					
 		
 		}
-		
+	//std::cout << "a427" << std::endl;	
 	free(faces);
 	
 	// check delLinesList for dupilcates

@@ -27,8 +27,9 @@ class GeometryBase
 		virtual void PerStepUpdates() = 0;
 		virtual void InitialiseGeometry() = 0;
 		
-		virtual void GetIParticles(std::list<CParticle>& vorticesList_)= 0;  
-		virtual void GetJParticles(std::list<CParticle>& vorticesList_) = 0;
+		virtual std::list<CParticle> * GetIParticles() = 0;  // returns particles to be integrated
+		virtual void GetJParticles(std::list<CParticle>& vorticesList_) = 0;  // returns particles seen by integrated particles
+		 
 				
 		virtual double GetXLo() const = 0;
 		virtual double GetXHi() const = 0;

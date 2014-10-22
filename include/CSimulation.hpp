@@ -84,6 +84,8 @@ public:
 	
 	GeometryBase * get_geom() { return geom; }
 	
+	double get_forcerange();
+	
 	int get_triangulationInterval() {return triangulationInterval; }
 	int get_framedataInterval() {return framedataInterval; }
 	
