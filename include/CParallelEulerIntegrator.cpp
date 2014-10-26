@@ -23,6 +23,7 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator *integrator_)
 
 CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_)
 {
+	sim=new CSimulation;  // belongs to sim
 	// set pointers
 	sim=sim_;
 		
@@ -59,6 +60,8 @@ void CParallelEulerIntegrator::Initialise()
 		
 	}
 	
+
+	
 	
 }
 
@@ -75,7 +78,7 @@ CParallelEulerIntegrator::~CParallelEulerIntegrator()
 	delete [] cll;
 	delete [] lastcll;
 	
-	
+		
 };
 
 void CParallelEulerIntegrator::Integrate()

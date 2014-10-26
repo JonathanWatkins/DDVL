@@ -120,6 +120,13 @@ CSimulation::CSimulation()
 
 }
 
+CSimulation::~CSimulation()
+{
+
+	delete geom;
+	delete integrator;
+}
+
 void CSimulation::Run()
 {
 	if (initialised==false)
@@ -154,11 +161,11 @@ void CSimulation::DoStep()
 	ftime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	fcount++;
 	
-	startclock = clock();
+	//startclock = clock();
 	//DelaunayTriangulation();
 	//delVortexList=vorticesList;	
-	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
-	DTcount++;
+	//DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
+	//DTcount++;
 	
 }
 

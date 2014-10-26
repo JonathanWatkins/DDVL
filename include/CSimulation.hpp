@@ -48,7 +48,7 @@ public:
 	
 	CSimulation();
 	
-	~CSimulation() {};
+	~CSimulation();
 	
 	int Initialise(std::string jobBatchFileLocation_);
 	

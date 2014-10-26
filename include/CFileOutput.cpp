@@ -19,6 +19,11 @@ CFileOutput::CFileOutput()
 	jobDirectory="";
 	fsptr= new std::ofstream*[MAXFILES];
 	
+	
+	for(int i = 0; i < MAXFILES; ++i)
+	{
+		fsptr[i] = new std::ofstream;
+	}
 }
 
 
@@ -62,7 +67,13 @@ CFileOutput::~CFileOutput()
 		
 		for(int i=0;i<filecount;++i)
 			newFile[i].close();
-
+		
+		//for(int i = 0; i < MAXFILES; ++i)
+		//{
+		//	delete [] fsptr[i];	
+		//}
+		
+		//delete [] fsptr;
 }
 
 

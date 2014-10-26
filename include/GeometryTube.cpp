@@ -24,6 +24,7 @@
 
 GeometryTube::GeometryTube(CSimulation * sim_)
 {
+	sim=new CSimulation;
 	sim=sim_;
 	
 	triangulatedParticlesList = new std::list<CParticle>;
@@ -68,6 +69,15 @@ GeometryTube::GeometryTube(CSimulation * sim_)
     Nd=0;
 	Nv=0;
 	Nmis=0;    
+	
+}
+
+GeometryTube::~GeometryTube()
+{
+	delete triangulatedParticlesList;
+    delete triangulatedLinesList;
+    delete AParticlesList;
+    delete OtherParticlesList;
 	
 }
 
@@ -609,7 +619,7 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_)
 double GeometryTube::CalcSinkB() const
 {
 	
-	double aaverage=0;
+	/*double aaverage=0;
 	int numa=0;
 	for (std::list<CDelLine>::iterator p = triangulatedLinesList->begin();
 				p!=triangulatedLinesList->end(); ++p)
@@ -631,13 +641,35 @@ double GeometryTube::CalcSinkB() const
 	aaverage=aaverage/(double)numa;
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
+	*/
+	
+	int np=0;
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+				p!=AParticlesList->end(); ++p)
+	{
+		double x = p->get_x();
+		double y = p->get_y();
+						
+		if ( (x > bathLength+channelLength-binsize/2.0 && x<bathLength+channelLength+binsize/2.0) &&
+				(y>-b0/2 && y<channelWidth+b0/2))
+		{
+		
+			np++;
+		}				
+	}
+	
+	double B= Phi*np/binsize/channelWidth;
+	
+	//std::cout << "Sink B: "  << B  << " " << 2*Phi/(sqrt((double)3)*aaverage*aaverage) << std::endl;
+	
+	return B;
 	
 }
 
 double GeometryTube::CalcSourceB() const
 {
 	
-	double aaverage=0;
+	/*double aaverage=0;
 	int numa=0;
 	
 	//if (triangulatedLinesList->size() == 0) throw std::runtime_error("GeometryTube::CalcSourceB() No triangulated particles");
@@ -663,6 +695,28 @@ double GeometryTube::CalcSourceB() const
 	aaverage=aaverage/(double)numa;
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
+	*/
+	
+	int np=0;
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+				p!=AParticlesList->end(); ++p)
+	{
+		double x = p->get_x();
+		double y = p->get_y();
+						
+		if ( (x > bathLength-binsize/2.0 && x<bathLength+binsize/2.0) &&
+				(y>-b0/2 && y<channelWidth+b0/2))
+		{
+		
+			np++;
+		}				
+	}
+	
+	double B= Phi*np/binsize/channelWidth;
+	
+	//std::cout << "Sink B: "  << B  << " " << 2*Phi/(sqrt((double)3)*aaverage*aaverage) << std::endl;
+	
+	return B;
 	
 	
 }
@@ -842,12 +896,12 @@ void GeometryTube::OutputAverages()
 	int t = sim->get_t();
 	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
 	
-		*sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl
+		/* *sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl
 					 << "  velx of channel vortices: " << avXVel/t << std::endl
 					 << "  vely of channel vortices: " << avYVel/t << std::endl
 					 << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl
 					 << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
-	
+	*/
 	std::cout << "Writing final averages...done" << std::endl;
 	
 }

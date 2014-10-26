@@ -23,6 +23,8 @@ class GeometryTube : public GeometryBase
 {
     public:
         GeometryTube(CSimulation * sim_);
+        ~GeometryTube();
+        
         
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // base functions
