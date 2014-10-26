@@ -22,48 +22,73 @@ class CSimulation;
 class GeometryChannel : public GeometryBase
 {
     public:
-        GeometryChannel(CSimulation & sim_);
+        GeometryChannel(CSimulation * sim_);
+        ~GeometryChannel();
         
-        // base functions
-		void ReplaceEscapedVortices() const;
-        void InitialisePins();
-        void InitialiseVortices() const;
-        void AddParticlesForDT(std::list<CParticle> & vorticesList_) const;
-        void WrapSystem() const;
-        void InitialiseDisorder() const;
-        CParticle GetFirstPin() const;
+        
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// base functions
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+	    void PerStepAnalysis();
+		void EndofSimAnalysis();
+		void PerStepUpdates();
+		void InitialiseGeometry();
+		
+		void AddParticlesForDT(std::list<CParticle> & vorticesList_);  // returns particles to be triangulated
+		std::list<CParticle> * GetIParticles();  // returns particles to be integrated
+		void GetJParticles(std::list<CParticle>& vorticesList_);  // returns particles seen by integrated particles
+		 
+				
+		double GetXLo() const { return xlo; }
+		double GetXHi() const { return xhi; }
+		double GetYLo() const { return ylo; }
+		double GetYHi() const { return yhi; }
+		double Geta0() const { return a0; }
+		
+		
+		std::list<CParticle> * GetTriangulatedParticlesList() {return triangulatedParticlesList; }
+		std::list<CDelLine> * GetTriangulatedLinesList() {return triangulatedLinesList; }
+
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// class specific functions
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX		
+private:
+		
+		void ReplaceEscapedVortices();
+        void InitialiseVortices();
         double GetRemovalSourceX() const;
 		double GetRemovalSinkX() const;
-		void UpdateBathDensities() const;
-		bool AddParticleToBath(std::string location_) const;	//		Adds particle to source or sink
-		bool RemoveParticleFromBath(std::string location_) const; 	//		Removes particle from source or sink
+		void UpdateBathDensities();
+		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
+		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
+		void WrapVortices(std::list<CParticle>& iList);
 		void LoadBatchFile();
-		void WrapVortices(std::list<CParticle>& vorticesList_) const;
-	
-		// getters in the header
-		double GetChannelLength() const { return channelLength; }
-		double GetChannelWidth() const { return channelWidth; }
-		double GetBathLength() const { return bathLength; }
-		double GetBathWidth() const { return bathWidth; }
-		double GetSourceBField() const { return sourceBfield; }
-		double GetSinkBField() const { return sinkBfield; }
-		
-		// class specific functions
-		double calcSinkB() const;
-		double calcSourceB() const;	
+		double CalcSinkB() const;
+		double CalcSourceB() const;	
+		void InitialiseRandomMobileParticles();
+		void InitialiseCEParticles();
+		void InitialiseParameters();
 				 
-    private:
+    	// Analysis functions
+		void CalculateAndOutputAvVel();
+		void OutputFinalParticlePositions();
+		void OutputParticlePositions();
+		void OutputAverages();
+		void CalculateAndOutputNd();			
+
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// class specific variables
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX		
         
-        CSimulation & sim;
+        CSimulation * sim;
         
-        std::list<CParticle> * vorticesList;
-        std::list<CParticle> * pinsList;
-        std::list<CDelLine> * delLinesList;
+        std::list<CParticle> * AParticlesList;
+        std::list<CParticle> * OtherParticlesList;
+        std::list<CParticle> * triangulatedParticlesList;
+        std::list<CDelLine> * triangulatedLinesList;
         
-        
-        CParticle firstPin;
-        
-        double bathLength;
+		double bathLength;
 		double bathWidth;
 		double channelLength;
 		double channelWidth;
@@ -73,33 +98,32 @@ class GeometryChannel : public GeometryBase
 		double a0;
 		double b0;
 		double dt;
-		double channelOffset;
+		double forcerange;
 		std::string pos_file_name;
         std::string pins_file_name;
-        std::string jobBatchFileLocation;
         
         int sourceDensity;
 		int sinkDensity;
 		int channelDensity;
         
         double removesourcex;
-        double removesourcey0;
         double removesinkx;
-        double removesourcey1;
-        double removechannelx0;
-        double removechannelx1;
+        
         double removetopchannely;
         double removebottomchannely;
-
-		double etchsourcex0, etchsourcey0, etchsourcex1, etchsourcey1;
-		double etchchannelx0, etchchannely0, etchchannelx1, etchchannely1;
-		double etchsinkx0, etchsinky0, etchsinkx1, etchsinky1;
         
+		double etchsourcex, etchsinkx;
+			  
         double binsize;
         
- 
+        double avXVel;
+        double avYVel;
         
+        double xlo,ylo, xhi,yhi;
         
+        int Nd;
+		int Nv;
+		int Nmis;
               
 };
 

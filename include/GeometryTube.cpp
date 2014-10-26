@@ -896,12 +896,12 @@ void GeometryTube::OutputAverages()
 	int t = sim->get_t();
 	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
 	
-		/* *sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl
-					 << "  velx of channel vortices: " << avXVel/t << std::endl
-					 << "  vely of channel vortices: " << avYVel/t << std::endl
-					 << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl
-					 << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
-	*/
+		*sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl;
+		*sim->get_FS("avfile") << "  velx of channel vortices: " << avXVel/t << std::endl;
+		*sim->get_FS("avfile") << "  vely of channel vortices: " << avYVel/t << std::endl;
+		*sim->get_FS("avfile") << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl;
+		*sim->get_FS("avfile") << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
+	
 	std::cout << "Writing final averages...done" << std::endl;
 	
 }
@@ -934,8 +934,6 @@ void GeometryTube::CalculateAndOutputNd()
 	Nd=Nmis/(double)Nv;
 	*sim->get_FS("Nd") << sim->get_t() << " " << Nd << std::endl;
 }
-
-bool isA (const CParticle & i) { return i.get_type()=='A' ? true : false; }
 
 std::list<CParticle> * GeometryTube::GetIParticles()
 {

@@ -1,13 +1,8 @@
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//	GeometryChannel.cpp
+//	GeometryCustom.cpp
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #pragma warning ( disable : 2586  )  // supresses warning a bug due to icc and boost compilation
-
-#include "GeometryChannel.hpp"
-
-#include "CSimulation.hpp"
-#include "CParticle.hpp"
 
 #include <stdexcept>
 #include <list>
@@ -18,75 +13,136 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
+#include "GeometryCustom.hpp"
+#include "CSimulation.hpp"
+#include "CParticle.hpp"
 
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	constructor
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-GeometryChannel::GeometryChannel(CSimulation & sim_)
-:		sim(sim_)
-,   vorticesList(sim_.get_vorticesList())
-,   delLinesList(sim_.get_delLinesList())
-,		a0(sim_.get_a0())
-,		b0(sim_.get_b0())
-,		dt(sim_.get_dt())
-,		binsize(sim.get_binsize())
-,   	pos_file_name(sim_.GetPosFileName())
-,		jobBatchFileLocation(sim_.get_jobBatchFileLocation())
+GeometryCustom::GeometryCustom(CSimulation * sim_)
 {
-
-	LoadBatchFile();
+	sim=new CSimulation;
+	sim=sim_;
 	
+	triangulatedParticlesList = new std::list<CParticle>;
+    triangulatedLinesList = new std::list<CDelLine>;
+    AParticlesList = new std::list<CParticle>;
+    OtherParticlesList = new std::list<CParticle>;
+	
+	a0 = 0;
+	b0 = 0;
+	pos_file_name = "";
+	Phi = 0;
+	forcerange=0;
+	dt=0;
+	
+	binsize = 0;
+	
+	avXVel=0;
+    avYVel=0;
+    
+    xlo=0;
+    ylo=0;
+    xhi=0;
+    yhi=0;
+    
+    wrapx=false;
+    wrapy=false;
+    
+        
+}
+
+GeometryCustom::~GeometryCustom()
+{
+	delete triangulatedParticlesList;
+    delete triangulatedLinesList;
+    delete AParticlesList;
+    delete OtherParticlesList;
+	
+}
+
+void GeometryCustom::LoadBatchFile()
+{
+	std::cout << "Loading job batch file..." << std::endl;
+	
+	// geometry variables
+	sim->ReadVariableFromBatchFile(a0, "GeneralParameters.a0");
+	b0=(std::sqrt((double)3)/2.0)*a0;
+		
+	sim->ReadVariableFromBatchFile(Phi, "Interactions.Phi");
+	sim->ReadVariableFromBatchFile(forcerange, "GeneralParameters.forceRange");
+	sim->ReadVariableFromBatchFile(dt, "GeneralParameters.dt");
+	
+	// analysis variables
+	sim->ReadVariableFromBatchFile(binsize, "GeneralParameters.binSize");
+	bool posfile;
+	sim->ReadVariableFromBatchFile(posfile, "InputData.altPosFile");
+	if (posfile == true)
+	{
+			sim->ReadVariableFromBatchFile(pos_file_name, "InputData.altPosFileName");
+	
+	}
+		
+	std::cout << "   Job Header loaded.\n\n";
+	
+	
+}
+
+void GeometryCustom::InitialiseGeometry()
+{
+	LoadBatchFile();
+	GetSystemSize();
+	GetPeriodicity();
+	InitialiseVortices();
+	InitialiseParameters();
+	
+}
+
+void GeometryCustom::InitialiseParameters()
+{
 	
 	// calculate system parameters
-	xlo=sim->get_xlo();
-	xhi=sim->get_xhi();
-	ylo=sim->get_ylo();
-	yhi=sim->get_yhi();
-	
-	periodicity=sim->get_periodicity(); //string containing nothing or x or y or x,y 
-	// check if periodic
-	
-	
-	
-	
-	
-	std::cout << "Channel geometry selected." << std::endl; 
+		
+	std::cout << "a0: " << a0
+			  << "Phi: " << Phi
+			  << "xlo: " << xlo
+			  << "xhi: " << xhi
+			  << "ylo: " << ylo
+			  << "yhi: " << yhi
+			  << std::endl;
+			   
+	 
+	std::cout << "Custom geometry selected." << std::endl;
 	
 }
 
-void GeometryChannel::LoadBatchFile()
-{
-	boost::property_tree::ptree pt;
-	boost::property_tree::ini_parser::read_ini(jobBatchFileLocation, pt);
-	
-	xlo=pt.get<double>("Geometry.xlo")*a0;
-	xhi=pt.get<double>("Geometry.xhi")*b0;
-	ylo=pt.get<double>("Geometry.ylo")*a0;
-	yhi=pt.get<double>("Geometry.yhi")*a0;
-	
-}
-
-void GeometryChannel::InitialiseVortices() const
+void GeometryCustom::InitialiseVortices()
 {
 
 	std::cout << "Initialising Vortices..." << std::endl;
-	std::cout << "   " << "sourceDensity: " << sourceDensity << std::endl;
-	std::cout << "   " << "sinkDensity: " << sinkDensity << std::endl;
-  
+	
+	
 	std::cout << "   " << pos_file_name << std::endl;
-			
+	
 	std::ifstream myfile (pos_file_name.c_str());
 	
-	
-	if (myfile.is_open())
+	if (myfile.is_open()) // Get all particle positions from file
 	{
 		std::cout << "   " << "Initial Vortex Positions From File" << std::endl;
-		//file = true;
+		
+		
+		if (myfile.good())  //get header info
+		{	
+			myfile >> xlo >> xhi >> ylo >> yhi;
+		}
+		
 		double xval;
 		double yval;
 		char type;
+		
 		while ( myfile.good() )
 		{
 			myfile >> type >> xval >> yval;
@@ -94,112 +150,246 @@ void GeometryChannel::InitialiseVortices() const
 			CParticle newVortex;
 			newVortex.set_pos(xval,yval);
 			newVortex.set_type(type);
-			vorticesList->push_back(newVortex);	
+			if (type=='A') AParticlesList->push_back(newVortex);  
+			else OtherParticlesList->push_back(newVortex);
+				
+	
 		}
-
 		myfile.close();
-
+	
 	}
-	else
-	{
+	else // Make random mobile particles and CE particles
+	{	
 		std::stringstream oss;
-		oss << "GeometryChannel::InitialiseVorices() Cannot load vortex positions from file " << pos_file_name << std::endl;
+		oss << "GeometryCustom::InitialiseVortices() Could not load file " << pos_file_name;
 		throw std::runtime_error(oss.str());
 	}
-		
-   
-	std::cout << "   " << "initialiseVortices() created " << vorticesList->size() << " vortices." << std::endl << std::endl;
 	
+	std::cout 	<< "   " << "initialiseVortices() created " << AParticlesList->size() << " Langevin vortices" 
+				<< " and " << OtherParticlesList->size() << " other votices." << std::endl << std::endl;
 }
-         
-void GeometryChannel::ReplaceEscapedVortices() const
+                     
+void GeometryCustom::CheckEscapedVortices()
 {
- 	for (std::list<CParticle>::iterator p = vorticesList->begin();
-			p!=vorticesList->end(); ++p)
+	// replaces particles that escape the source and wraps particles in y direction along the channel
+ 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+			p!=AParticlesList->end(); ++p)
 	{
 		
-		if (p->get_x() <= xlo || p->get_y() <= ylo || 
-				p->get_x() >= xhi  || p->get_y() >= yhi )
-			std::runtime_error("Particle escaped from simulation")
+		double x = p->get_x();
+		double y = p->get_y();
+		
+		if (x <= xl ||	x >= xhi || y <= ylo || y <= yhi)
+		{		
+			throw std::runtime_error("GeometryCustom::ReplaceEscapedVortices() Vortices have escaped from the simulation box.");
+			
+			//double xval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
+			//double yval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
+			//p->set_pos(xval,yval);
+			
+		}	
+	
 	}
 	
 	
-}
-
-void GeometryChannel::InitialisePins()
-{
-	
 	
 	
 }
 
-void GeometryChannel::AddParticlesForDT(std::list<CParticle> & vorticesList_) const
+void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 {
-
+	// Add A particles
+	iList.clear();
+	std::list<CParticle>::iterator it = iList.end();
+	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+	
+	WrapVortices(iList);
+	
+	static bool once = false;
+	if (once == true ) return;
+	for(std::list<CParticle>::iterator p = iList.begin();
+			p != iList.end(); ++p)
+	{
+		*sim->get_FS("wraptest") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		
+		if ( std::distance(p,iList.end()) != 1 )
+		{
+			*sim->get_FS("wraptest") << std::endl;
+		}
+	}
+	once = true;
 	
 }
 
-void GeometryChannel::WrapSystem() const
-{}
-
-void GeometryChannel::InitialiseDisorder() const
+void GeometryCustom::PerStepAnalysis()
 {
+	  OutputParticlePositions(); 
+}
+
+void GeometryCustom::EndofSimAnalysis()
+{
+	OutputFinalParticlePositions();
+	OutputAverages();
+
+}
+
+void GeometryCustom::PerStepUpdates()
+{
+	CheckEscapedVortices();	
 	
 }
 
-double GeometryChannel::GetRemovalSourceX() const
+void GeometryCustom::WrapVortices(std::list<CParticle>& iList)
 {
- return 0;
+		
+	// Add periodic y particles	
+	double wrapsize = forcerange;
+	double ysize = channelWidth+b0;
+	
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+		p!=AParticlesList->end(); ++p )
+	{
+			if (p->get_y() <= wrapsize)  // forcerange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
+				newVortex.set_type('B');
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
+				newVortex.set_type('B');
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+	}
+
+}
+
+void GeometryCustom::OutputFinalParticlePositions()
+{
+	int t = sim->get_t();
+	int simulation_time = sim->get_simulation_time();
+	// At the end of the simulation, output vortex positions
+	if (t==sim->get_simulation_time()+1)
+	{
+		
+		for(std::list<CParticle>::iterator p = AParticlesList->begin();
+			p != AParticlesList->end(); ++p)
+		{
+			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+			
+			if ( std::distance(p,AParticlesList->end()) != 1 )
+			{
+				*sim->get_FS("posfile") << std::endl;
+			}
+		}
+		
+		for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
+			p != OtherParticlesList->end(); ++p)
+		{
+			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+			
+			if ( std::distance(p,OtherParticlesList->end()) != 1 )
+			{
+				*sim->get_FS("posfile") << std::endl;
+			}
+		}
+		
+		
+		
+		std::cout << "Writing final vortex positions...done" << std::endl;
+	}
+}
+
+void GeometryCustom::OutputParticlePositions()
+{
+	
+	int t = sim->get_t();	
+	if (t==1) *sim->get_FS("guifile") << "# This file contains frame data\n"
+																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+	
+	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
+	
+	// counts number of active particles
+	
+	*sim->get_FS("guifile") << "{" << t << ", " << triangulatedParticlesList->size() << ", ";
+	
+	
+	bool first=true;
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+			p != triangulatedParticlesList->end(); ++p)
+	{
+				
+		if (first==false)
+		{  
+			*sim->get_FS("guifile") << ", ";
+		}
+
+		first = false;
+		*sim->get_FS("guifile") << "{"
+						 << p->get_id() << ", "
+						 << p->get_type() << ", "
+						 << p->get_ghost() << ", "
+						 << p->get_x() << ", " 
+						 << p->get_y() << ", " 
+						 << p->get_velx() << ", "
+						 << p->get_vely()
+						 << "}";											
+
+			
+	}
+	
+	*sim->get_FS("guifile") << "}" << std::endl;
+}
+
+void GeometryCustom::OutputAverages()
+{	
+	int t = sim->get_t();
+	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
+	
+		*sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl;
+		*sim->get_FS("avfile") << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl;
+		*sim->get_FS("avfile") << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
+	
+	std::cout << "Writing final averages...done" << std::endl;
+	
+}
+
+std::list<CParticle> * GeometryCustom::GetIParticles()
+{
+	return AParticlesList;
+}
+
+void GeometryCustom::GetJParticles(std::list<CParticle> & iList)
+{
+	// Add A particles
+	iList.clear();
+	std::list<CParticle>::iterator it = iList.end();
+	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+
+
+	// Add CE particles
+	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
+
+	WrapVortices(iList);
+
+}
+
+void GeometryCustom::GetPeriodicity()
+{
+	// get xlo xhi ylo yhi from posfile
+	std::string pstr;
+	sim->ReadVariableFromBatchFile(pstr, "Geometry.Periodicity");
+	// if instr x, wrap x. If instr y, wrap y
+	
 } 
-
-double GeometryChannel::GetRemovalSinkX() const
-{
-	return 0;
-} 
-
-CParticle GeometryChannel::GetFirstPin() const
-{
-	return firstPin;
-}
-
-
-
-void GeometryChannel::UpdateBathDensities() const
-{
-	
-	
-}
-
-bool GeometryChannel::AddParticleToBath(std::string location_) const
-{
-	return false;
-}
-
-bool GeometryChannel::RemoveParticleFromBath(std::string location_) const
-{
-	return false;
-}
-
-
-double GeometryChannel::calcSinkB() const
-{
-	return 0;
-}
-
-double GeometryChannel::calcSourceB() const
-{
-	
-	return 0;
-}
-
-void GeometryChannel::WrapVortices(std::list<CParticle>& vorticesList_) const
-{
-	return;
-	
-}
-
-void GeometryCh
-
+ 
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end
