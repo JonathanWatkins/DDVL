@@ -335,4 +335,7 @@ double CSimulation::get_time() const { return integrator->Getdt()*t; };
 double CSimulation::get_M2FullAverage() const {	return integrator->GetM2FullAverage(); }
 
 double CSimulation::get_forcerange() { return integrator->GetForceRange(); }
+
+double CSimulation::get_dt() { integrator->Getdt(); }  // sim owns
+
 	

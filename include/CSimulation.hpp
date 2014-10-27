@@ -62,6 +62,8 @@ public:
 	
 	int get_t() { return t; }  // sim owns
 
+	double get_dt();
+
 	int Geta0() {return geom->Geta0(); }
 
 	int get_simulation_time() { return simulation_time; }  // sim owns

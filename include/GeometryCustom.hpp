@@ -57,9 +57,19 @@ private:
 		
 		void CheckEscapedVortices();
         void InitialiseVortices();
-		void WrapVorticesX(std::list<CParticle>& iList);
-		void WrapVorticesY(std::list<CParticle>& iList);
-		void WrapVorticesXY(std::list<CParticle>& iList);
+		void WrapVorticesX(std::list<CParticle>& jList);
+		void WrapVorticesY(std::list<CParticle>& jList);
+		void WrapVorticesXY(std::list<CParticle>& jList);
+		void DoWrapX(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
+		void DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
+		void DoWrapXY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
+		void TestX(std::list<CParticle>::iterator p);
+		void TestY(std::list<CParticle>::iterator p);
+		void KeepParticlesInSimBoxX();
+		void KeepParticlesInSimBoxY();
+		void KeepParticlesInSimBoxXY();
+		void UserUpdates();
+		
 		void LoadBatchFile();
 		void InitialiseParameters();
 		void GetPeriodicity();
@@ -69,6 +79,9 @@ private:
 		void OutputParticlePositions();
 		void OutputAverages();
 		void OutputParticleCount();
+		
+		// User Defined functions
+		void MoveTopCE();
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables
@@ -92,6 +105,9 @@ private:
         
         bool wrapx;
         bool wrapy;
+        double delx;
+		double dely;
+	
         
         double xlo,ylo, xhi,yhi;
                

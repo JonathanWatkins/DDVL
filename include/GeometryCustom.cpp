@@ -8,10 +8,10 @@
 #include <list>
 #include <iterator>
 #include <iostream>
-#include <fstream>
+//#include <fstream>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp>
+//#include <boost/property_tree/ptree.hpp>
+//#include <boost/property_tree/ini_parser.hpp>
 
 #include "GeometryCustom.hpp"
 #include "CSimulation.hpp"
@@ -109,8 +109,10 @@ void GeometryCustom::InitialiseParameters()
 			  << "ylo: " << ylo
 			  << "yhi: " << yhi
 			  << std::endl;
-			   
-	 
+	
+	delx = xhi - xlo;		   
+	dely = yhi - ylo;
+	
 	std::cout << "Custom geometry selected." << std::endl;
 	
 }
@@ -194,6 +196,108 @@ void GeometryCustom::CheckEscapedVortices()
 	
 }
 
+void GeometryCustom::KeepParticlesInSimBoxX()
+{
+	// replaces particles that escape the source and wraps particles in y direction along the channel
+ 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+			p!=AParticlesList->end(); ++p)
+	{
+		
+		TestX(p);
+		
+	}
+	
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+			p!=OtherParticlesList->end(); ++p)
+	{
+		
+		TestX(p);
+		
+	}
+	
+}
+
+void GeometryCustom::KeepParticlesInSimBoxY()
+{
+	// replaces particles that escape the source and wraps particles in y direction along the channel
+ 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+			p!=AParticlesList->end(); ++p)
+	{
+		
+		TestY(p);
+		
+	}
+	
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+			p!=OtherParticlesList->end(); ++p)
+	{
+		
+		TestY(p);		
+	}
+	
+}
+
+void GeometryCustom::TestX(std::list<CParticle>::iterator p)
+{
+	double x = p->get_x();
+				
+	if (x < xlo && x > -forcerange )  // left of sim box in -forcerange < x < xlo
+	{	
+		double testx = x+delx;
+		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		p->set_x(testx);
+	}
+			
+	if (x > xhi && x < xhi+forcerange )  // right of sim box in xhi < x < xhi
+	{	
+		double testx = x-delx;
+		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		p->set_x(testx);
+	}
+	
+	
+}
+
+void GeometryCustom::TestY(std::list<CParticle>::iterator p)
+{
+	double y = p->get_y();
+		
+	if (y < ylo && y > -forcerange )  // left of sim box in -forcerange < y < ylo
+	{	
+		double testy = y+dely;
+		if (testy < ylo || testy > yhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		p->set_y(testy);
+	}
+			
+	if (y > yhi && y < yhi+forcerange )  // right of sim box in yhi < y < yhi
+	{	
+		double testy = y-dely;
+		if (testy < ylo || testy > yhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		p->set_y(testy);
+	}
+
+}
+
+
+void GeometryCustom::KeepParticlesInSimBoxXY()
+{
+	// replaces particles that escape the source and wraps particles in y direction along the channel
+ 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+			p!=AParticlesList->end(); ++p)
+	{
+			TestX(p);
+			TestY(p);
+	}
+	
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+			p!=OtherParticlesList->end(); ++p)
+	{
+			TestX(p);
+			TestY(p);
+	}
+	
+}
+
 void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 {
 	// Add A particles
@@ -236,155 +340,190 @@ void GeometryCustom::EndofSimAnalysis()
 
 void GeometryCustom::PerStepUpdates()
 {
-	CheckEscapedVortices();	
-	
+	UserUpdates();
+	if (wrapx==true && wrapy==false) KeepParticlesInSimBoxX();
+	if (wrapx==false && wrapy==true) KeepParticlesInSimBoxY();
+	if (wrapx==true && wrapy==true) KeepParticlesInSimBoxXY();
+	CheckEscapedVortices();
 }
 
-void GeometryCustom::WrapVorticesX(std::list<CParticle>& iList)
+void GeometryCustom::WrapVorticesX(std::list<CParticle>& jList)
 {
 		
 	// Add periodic x particles	
-	double wrapsize = forcerange;
-	double delx = xhi-xlo;
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 		p!=AParticlesList->end(); ++p )
 	{
-			if (p->get_y() <= xlo+forcerange)  // forcerange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			if (p->get_y() >= xhi-forcerange) //channelWidth-forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
+		DoWrapX(p, jList);
 	}
-
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p!=OtherParticlesList->end(); ++p )
+	{
+		DoWrapX(p, jList);
+	}
 }
 
-void GeometryCustom::WrapVorticesY(std::list<CParticle>& iList)
+void GeometryCustom::WrapVorticesY(std::list<CParticle>& jList)
 {
 		
 	// Add periodic y particles	
 	double wrapsize = forcerange;
-	double dely = yhi-ylo;
 	
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 		p!=AParticlesList->end(); ++p )
 	{
-			if (p->get_y() <= ylo+forcerange)  // forcerange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			if (p->get_y() >= yhi-forcerange) //channelWidth-forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
+		DoWrapY(p, jList);
+	}
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p!=OtherParticlesList->end(); ++p )
+	{
+		DoWrapY(p, jList);
 	}
 
 }
 
-void GeometryCustom::WrapVorticesXY(std::list<CParticle>& iList)
+void GeometryCustom::WrapVorticesXY(std::list<CParticle>& jList)
 {
 		
 	// Add periodic y particles	
-	double wrapsize = forcerange;
-	double delx = xhi-xlo;
-	double dely = yhi-ylo;
-	
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 		p!=AParticlesList->end(); ++p )
 	{
-						
-			if (p->get_y() <= ylo+forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
 			
-			if (p->get_y() >= yhi-forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
+			DoWrapXY(p, jList);			
 			
-			if (p->get_x() <= xlo+forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
+	}
+	
+	// Add periodic y particles	
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p!=OtherParticlesList->end(); ++p )
+	{
 			
-			if (p->get_x() >= xhi-forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
+			DoWrapXY(p, jList);			
 			
-			// corners
-			if (p->get_y() <= ylo+forcerange && p->get_x() <=xlo+forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()+dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			
-			if (p->get_y() >= yhi-forcerange && p->get_x() >= xhi-forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()-dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			
-			if (p->get_y() <= ylo+forcerange && p->get_x() >= xhi-forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()+dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			
-			if (p->get_y() >= yhi-forcerange && p->get_x() <= xlo+forcerange)
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()-dely);
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
+	}
+	
+
+}
+
+void GeometryCustom::DoWrapX(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+{
+	if (p->get_x() <= xlo+forcerange)  // forcerange
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+	if (p->get_x() >= xhi-forcerange) //channelWidth-forceRange
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+}
+
+
+void GeometryCustom::DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+{
+	if (p->get_y() <= ylo+forcerange)  // forcerange
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+	if (p->get_y() >= yhi-forcerange) //channelWidth-forceRange
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+}
+
+void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+{
+
+	if (p->get_y() <= ylo+forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
 	}
 
+	if (p->get_y() >= yhi-forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	if (p->get_x() <= xlo+forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	if (p->get_x() >= xhi-forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	// corners
+	if (p->get_y() <= ylo+forcerange && p->get_x() <=xlo+forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()+dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	if (p->get_y() >= yhi-forcerange && p->get_x() >= xhi-forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()-dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	if (p->get_y() <= ylo+forcerange && p->get_x() >= xhi-forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()+dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	if (p->get_y() >= yhi-forcerange && p->get_x() <= xlo+forcerange)
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()-dely);
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+
+	
 }
 
 void GeometryCustom::OutputFinalParticlePositions()
@@ -505,20 +644,20 @@ std::list<CParticle> * GeometryCustom::GetIParticles()
 	return AParticlesList;
 }
 
-void GeometryCustom::GetJParticles(std::list<CParticle> & iList)
+void GeometryCustom::GetJParticles(std::list<CParticle> & jList)
 {
 	// Add A particles
-	iList.clear();
-	std::list<CParticle>::iterator it = iList.end();
-	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+	jList.clear();
+	std::list<CParticle>::iterator it = jList.end();
+	jList.insert(it,AParticlesList->begin(),AParticlesList->end());
 
 
 	// Add CE particles
-	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
+	jList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
 
-	if (wrapx==true && wrapy==false) WrapVorticesX(iList);
-	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
-	if (wrapx==true && wrapy==true) WrapVorticesXY(iList);
+	if (wrapx==true && wrapy==false) WrapVorticesX(jList);
+	if (wrapx==false && wrapy==true) WrapVorticesY(jList);
+	if (wrapx==true && wrapy==true) WrapVorticesXY(jList);
 	
 }
 
@@ -537,6 +676,32 @@ void GeometryCustom::OutputParticleCount()
 	
 	std::cout << "Langevin particles: " << AParticlesList->size() << std::endl;
  }
+ 
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+//	UserUpdates
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ 
+ void GeometryCustom::UserUpdates()
+ {
+	 // Add functions here to be run every timestep
+	 MoveTopCE();
+ }
+ 
+ 
+ void GeometryCustom::MoveTopCE()
+ {
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p!=OtherParticlesList->end(); ++p)
+	{
+		if (p->get_y() > 10)
+		{	
+			p->set_x(p->get_x()+0.00003);
+			p->set_velx(0.00003/sim->get_dt());
+		}
+	}
+
+	 
+ } 
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end
