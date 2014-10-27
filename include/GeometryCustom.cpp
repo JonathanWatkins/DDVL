@@ -41,10 +41,7 @@ GeometryCustom::GeometryCustom(CSimulation * sim_)
 	
 	binsize = 0;
 	
-	avXVel=0;
-    avYVel=0;
-    
-    xlo=0;
+	xlo=0;
     ylo=0;
     xhi=0;
     yhi=0;
@@ -94,7 +91,6 @@ void GeometryCustom::LoadBatchFile()
 void GeometryCustom::InitialiseGeometry()
 {
 	LoadBatchFile();
-	GetSystemSize();
 	GetPeriodicity();
 	InitialiseVortices();
 	InitialiseParameters();
@@ -138,6 +134,8 @@ void GeometryCustom::InitialiseVortices()
 		{	
 			myfile >> xlo >> xhi >> ylo >> yhi;
 		}
+		if (xhi<=xlo) throw std::runtime_error("GeometryCustom()::InitialiseVortices() Requires xhi>xlo");
+		if (yhi<=ylo) throw std::runtime_error("GeometryCustom()::InitialiseVortices() Requires yhi>ylo");
 		
 		double xval;
 		double yval;
@@ -179,9 +177,9 @@ void GeometryCustom::CheckEscapedVortices()
 		double x = p->get_x();
 		double y = p->get_y();
 		
-		if (x <= xl ||	x >= xhi || y <= ylo || y <= yhi)
+		if (x <= xlo ||	x >= xhi || y <= ylo || y >= yhi)
 		{		
-			throw std::runtime_error("GeometryCustom::ReplaceEscapedVortices() Vortices have escaped from the simulation box.");
+			throw std::runtime_error("GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box.");
 			
 			//double xval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
 			//double yval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
@@ -203,9 +201,11 @@ void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 	std::list<CParticle>::iterator it = iList.end();
 	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
 	
-	WrapVortices(iList);
+	if (wrapx==true && wrapy==false) WrapVorticesX(iList);
+	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
+	if (wrapx==true && wrapy==true) WrapVorticesXY(iList);
 	
-	static bool once = false;
+	/*static bool once = false;
 	if (once == true ) return;
 	for(std::list<CParticle>::iterator p = iList.begin();
 			p != iList.end(); ++p)
@@ -218,12 +218,13 @@ void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 		}
 	}
 	once = true;
-	
+	*/
 }
 
 void GeometryCustom::PerStepAnalysis()
 {
 	  OutputParticlePositions(); 
+	  //OutputParticleCount();
 }
 
 void GeometryCustom::EndofSimAnalysis()
@@ -239,31 +240,146 @@ void GeometryCustom::PerStepUpdates()
 	
 }
 
-void GeometryCustom::WrapVortices(std::list<CParticle>& iList)
+void GeometryCustom::WrapVorticesX(std::list<CParticle>& iList)
+{
+		
+	// Add periodic x particles	
+	double wrapsize = forcerange;
+	double delx = xhi-xlo;
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+		p!=AParticlesList->end(); ++p )
+	{
+			if (p->get_y() <= xlo+forcerange)  // forcerange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			if (p->get_y() >= xhi-forcerange) //channelWidth-forceRange
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+	}
+
+}
+
+void GeometryCustom::WrapVorticesY(std::list<CParticle>& iList)
 {
 		
 	// Add periodic y particles	
 	double wrapsize = forcerange;
-	double ysize = channelWidth+b0;
+	double dely = yhi-ylo;
 	
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 		p!=AParticlesList->end(); ++p )
 	{
-			if (p->get_y() <= wrapsize)  // forcerange
+			if (p->get_y() <= ylo+forcerange)  // forcerange
 			{
 				CParticle newVortex;
 				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
-				newVortex.set_type('B');
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
 				newVortex.set_ghost();
 				iList.push_back(newVortex);
 			}
-			if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
+			if (p->get_y() >= yhi-forcerange) //channelWidth-forceRange
 			{
 				CParticle newVortex;
 				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
-				newVortex.set_type('B');
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+	}
+
+}
+
+void GeometryCustom::WrapVorticesXY(std::list<CParticle>& iList)
+{
+		
+	// Add periodic y particles	
+	double wrapsize = forcerange;
+	double delx = xhi-xlo;
+	double dely = yhi-ylo;
+	
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+		p!=AParticlesList->end(); ++p )
+	{
+						
+			if (p->get_y() <= ylo+forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			if (p->get_y() >= yhi-forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			if (p->get_x() <= xlo+forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			if (p->get_x() >= xhi-forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			// corners
+			if (p->get_y() <= ylo+forcerange && p->get_x() <=xlo+forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()+dely);
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			if (p->get_y() >= yhi-forcerange && p->get_x() >= xhi-forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()-dely);
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			if (p->get_y() <= ylo+forcerange && p->get_x() >= xhi-forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()+dely);
+				newVortex.set_ghost();
+				iList.push_back(newVortex);
+			}
+			
+			if (p->get_y() >= yhi-forcerange && p->get_x() <= xlo+forcerange)
+			{
+				CParticle newVortex;
+				newVortex = (*p);
+				newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()-dely);
 				newVortex.set_ghost();
 				iList.push_back(newVortex);
 			}
@@ -312,18 +428,18 @@ void GeometryCustom::OutputParticlePositions()
 	
 	int t = sim->get_t();	
 	if (t==1) *sim->get_FS("guifile") << "# This file contains frame data\n"
-																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+																	<< "# { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
 	
 	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
 	
-	*sim->get_FS("guifile") << "{" << t << ", " << triangulatedParticlesList->size() << ", ";
+	*sim->get_FS("guifile") << "{" << t << ", " << AParticlesList->size() + OtherParticlesList->size() << ", ";
 	
 	
 	bool first=true;
-	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
-			p != triangulatedParticlesList->end(); ++p)
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+			p != AParticlesList->end(); ++p)
 	{
 				
 		if (first==false)
@@ -344,6 +460,29 @@ void GeometryCustom::OutputParticlePositions()
 
 			
 	}
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+			p != OtherParticlesList->end(); ++p)
+	{
+				
+		if (first==false)
+		{  
+			*sim->get_FS("guifile") << ", ";
+		}
+
+		first = false;
+		*sim->get_FS("guifile") << "{"
+						 << p->get_id() << ", "
+						 << p->get_type() << ", "
+						 << p->get_ghost() << ", "
+						 << p->get_x() << ", " 
+						 << p->get_y() << ", " 
+						 << p->get_velx() << ", "
+						 << p->get_vely()
+						 << "}";											
+
+			
+	}
+	
 	
 	*sim->get_FS("guifile") << "}" << std::endl;
 }
@@ -377,19 +516,27 @@ void GeometryCustom::GetJParticles(std::list<CParticle> & iList)
 	// Add CE particles
 	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
 
-	WrapVortices(iList);
-
+	if (wrapx==true && wrapy==false) WrapVorticesX(iList);
+	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
+	if (wrapx==true && wrapy==true) WrapVorticesXY(iList);
+	
 }
 
 void GeometryCustom::GetPeriodicity()
 {
-	// get xlo xhi ylo yhi from posfile
 	std::string pstr;
-	sim->ReadVariableFromBatchFile(pstr, "Geometry.Periodicity");
+	sim->ReadVariableFromBatchFile(pstr, "Geometry.periodicity");
 	// if instr x, wrap x. If instr y, wrap y
-	
+	std::size_t found = pstr.find("x");
+	if (pstr.find("x")!=std::string::npos) wrapx=true;
+	if (pstr.find("y")!=std::string::npos) wrapy=true;
 } 
- 
+
+void GeometryCustom::OutputParticleCount()
+{
+	
+	std::cout << "Langevin particles: " << AParticlesList->size() << std::endl;
+ }
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end

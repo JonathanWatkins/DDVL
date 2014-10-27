@@ -57,7 +57,9 @@ private:
 		
 		void CheckEscapedVortices();
         void InitialiseVortices();
-		void WrapVortices(std::list<CParticle>& iList);
+		void WrapVorticesX(std::list<CParticle>& iList);
+		void WrapVorticesY(std::list<CParticle>& iList);
+		void WrapVorticesXY(std::list<CParticle>& iList);
 		void LoadBatchFile();
 		void InitialiseParameters();
 		void GetPeriodicity();
@@ -66,6 +68,7 @@ private:
 		void OutputFinalParticlePositions();
 		void OutputParticlePositions();
 		void OutputAverages();
+		void OutputParticleCount();
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables

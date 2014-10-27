@@ -9,8 +9,8 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=LINUX)
 	set(CMAKE_CXX_COMPILER "icc")
-#	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2" )
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2" )
+#	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
 ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=NOTLINUX)
 	set(CMAKE_CXX_COMPILER "icl")
@@ -53,6 +53,7 @@ include/CParallelEulerIntegrator.cpp
 include/GeometryBase.cpp
 include/GeometryChannel.cpp
 include/GeometryTube.cpp
+include/GeometryCustom.cpp
 include/rv_library.cpp
 )
 
