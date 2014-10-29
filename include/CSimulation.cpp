@@ -14,7 +14,11 @@
 #include "CRunningStats.hpp"
 #include "delaunay.hpp"
 #include "rv_library.hpp"
+
+// IntegratorBase Types
 #include "CParallelEulerIntegrator.hpp"
+#include "CParallelEulerFMAIntegrator.hpp"
+
 
 // GeometryBase Types
 #include "GeometryChannel.hpp"
@@ -212,7 +216,7 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	
 	// initialise integrator
 	
-	integrator = new CParallelEulerIntegrator(this);
+	integrator = SelectIntegrator();
 	
 	integrator->Initialise();
 	
@@ -308,6 +312,19 @@ GeometryBase * CSimulation::CreateGeometry()
     }
 }
 
+IntegratorBase * CSimulation::SelectIntegrator()
+{
+    //char o_type = inp_->GetOtype();
+    char integrator_type = 'A';  //  A = Parallel Euler integrator using F = M A
+								 //  V = Parallel Euler integrator using F = eta V
+    switch(integrator_type)
+    {
+        case 'A':  return new CParallelEulerFMAIntegrator(this);            break;
+        case 'V':  return new CParallelEulerIntegrator(this);             break;
+        default:   throw std::runtime_error("CSimulation:SelectIntegrator()  Bad character");
+    }
+}
+
 
 
 void CSimulation::AssignJobNumber()
@@ -336,6 +353,6 @@ double CSimulation::get_M2FullAverage() const {	return integrator->GetM2FullAver
 
 double CSimulation::get_forcerange() { return integrator->GetForceRange(); }
 
-double CSimulation::get_dt() { integrator->Getdt(); }  // sim owns
+double CSimulation::get_dt() { return integrator->Getdt(); }  // sim owns
 
 	

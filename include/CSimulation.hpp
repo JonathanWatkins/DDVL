@@ -18,9 +18,12 @@
 #include "CBin.hpp"
 #include "CRunningStats.hpp"
 #include "CFileOutput.hpp"
-#include "GeometryBase.hpp"
 
-class CParallelEulerIntegrator;
+// Base classes
+#include "GeometryBase.hpp"
+#include "IntegratorBase.hpp"
+
+//class CParallelEulerIntegrator;
 
 
 #define channel		 		0
@@ -41,7 +44,7 @@ struct SMoves
 class CSimulation
 {
 	
-	friend class CParallelEulerIntegrator; // should be using pure virtual base instead
+//	friend class CParallelEulerIntegrator; // should be using pure virtual base instead
 	
 
 public:
@@ -120,10 +123,12 @@ private:
 	
 	GeometryBase * geom;
 	
+	IntegratorBase * SelectIntegrator();
+	
+	IntegratorBase * integrator;
+		
 	std::string jobBatchFileLocation;
 	
-	CParallelEulerIntegrator* integrator;
-		
 	bool running;
 	bool paused;
 	CVersion version;

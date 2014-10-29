@@ -1,5 +1,5 @@
-#ifndef CPARALLELEULERINTEGRATOR_HPP
-#define CPARALLELEULERINTEGRATOR_HPP
+#ifndef CPARALLELEULEREMAINTEGRATOR_HPP
+#define CPARALLELEULERFMAINTEGRATOR_HPP
 
 #include "IntegratorBase.hpp"
 
@@ -8,35 +8,40 @@
 #include "CRunningStats.hpp"
 #include "CSimulation.hpp"
 
+#include <list>
 #include <boost/function.hpp>
 
 #define MAXLINKEDLISTSIZE 100
 
 class CSimulation;
 
-class CParallelEulerIntegrator : public IntegratorBase
+class CParallelEulerFMAIntegrator : public IntegratorBase
 {
 
 public:
 		
-	CParallelEulerIntegrator(CSimulation * sim_);
+	CParallelEulerFMAIntegrator(CSimulation * sim_);
 		 
-	~CParallelEulerIntegrator();
+	~CParallelEulerFMAIntegrator();
+	
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// base class functions
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	
 	void Integrate();
-	
 	double GetM2Average() const;
-	
 	double GetM2FullAverage() const;
-	
 	double Getdt() const {return dt;}
-		
 	void Initialise();
-	
 	double GetLambda() const { return lambda; }
 	double GetForceRange() const {return forceRange; }
 
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// class specific functions
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	
+	void VelocityRescaling(std::list<CParticle> * vorticesList);
+
 private:
 	
 	void ClearLinkedLists();
@@ -53,7 +58,7 @@ private:
 		std::list<CParticle>::iterator p_,
 		std::list<CParticle> & cell_, 
 		double (&force_)[2],
-		boost::function<double (double, CParallelEulerIntegrator *)> func_
+		boost::function<double (double, CParallelEulerFMAIntegrator *)> func_
 		);																				// Calculates the vortex-vortex interation
 	
 	double forceForm

@@ -690,14 +690,17 @@ void GeometryCustom::OutputParticleCount()
  
  void GeometryCustom::MoveTopCE()
  {
+	double dt = sim->get_dt();
 	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
 		p!=OtherParticlesList->end(); ++p)
 	{
 		if (p->get_y() > 10)
 		{	
-			p->set_x(p->get_x()+0.00003);
-			p->set_velx(0.00003/sim->get_dt());
+			p->set_velx(0.006);
+			p->set_x(p->get_x()+p->get_velx()*dt);
+			
 		}
+		
 	}
 
 	 
