@@ -8,7 +8,7 @@
 #include <list>
 #include <iterator>
 #include <iostream>
-//#include <fstream>
+#include <sstream>
 
 //#include <boost/property_tree/ptree.hpp>
 //#include <boost/property_tree/ini_parser.hpp>
@@ -16,6 +16,7 @@
 #include "GeometryCustom.hpp"
 #include "CSimulation.hpp"
 #include "CParticle.hpp"
+#include "FileOutput.hpp"
 
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -24,8 +25,10 @@
 
 GeometryCustom::GeometryCustom(CSimulation * sim_)
 {
-	sim=new CSimulation;
+	
 	sim=sim_;
+	
+	fout = sim->GetFileOutput();
 	
 	triangulatedParticlesList = new std::list<CParticle>;
     triangulatedLinesList = new std::list<CDelLine>;
@@ -58,7 +61,7 @@ GeometryCustom::~GeometryCustom()
     delete triangulatedLinesList;
     delete AParticlesList;
     delete OtherParticlesList;
-	
+    	
 }
 
 void GeometryCustom::LoadBatchFile()
@@ -90,6 +93,7 @@ void GeometryCustom::LoadBatchFile()
 
 void GeometryCustom::InitialiseGeometry()
 {
+	InitialiseFiles();
 	LoadBatchFile();
 	GetPeriodicity();
 	InitialiseVortices();
@@ -528,52 +532,54 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 
 void GeometryCustom::OutputFinalParticlePositions()
 {
+	
 	int t = sim->get_t();
 	int simulation_time = sim->get_simulation_time();
 	// At the end of the simulation, output vortex positions
-	if (t==sim->get_simulation_time()+1)
+	if (t!=sim->get_simulation_time()+1) return;
+	
+	std::stringstream oss;
+		
+	for(std::list<CParticle>::iterator p = AParticlesList->begin();
+		p != AParticlesList->end(); ++p)
 	{
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y();
 		
-		for(std::list<CParticle>::iterator p = AParticlesList->begin();
-			p != AParticlesList->end(); ++p)
+		if ( std::distance(p,AParticlesList->end()) != 1 )
 		{
-			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
-			
-			if ( std::distance(p,AParticlesList->end()) != 1 )
-			{
-				*sim->get_FS("posfile") << std::endl;
-			}
+			oss << std::endl;
 		}
-		
-		for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
-			p != OtherParticlesList->end(); ++p)
-		{
-			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
-			
-			if ( std::distance(p,OtherParticlesList->end()) != 1 )
-			{
-				*sim->get_FS("posfile") << std::endl;
-			}
-		}
-		
-		
-		
-		std::cout << "Writing final vortex positions...done" << std::endl;
 	}
+	
+	for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p != OtherParticlesList->end(); ++p)
+	{
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		
+		if ( std::distance(p,OtherParticlesList->end()) != 1 )
+		{
+			oss << std::endl;
+		}
+	}
+	
+	fout->RegisterOutput("posfile", oss.str());
+	
+	std::cout << "Writing final vortex positions...done" << std::endl;
+	
 }
 
 void GeometryCustom::OutputParticlePositions()
 {
-	
+	std::stringstream oss;
 	int t = sim->get_t();	
-	if (t==1) *sim->get_FS("guifile") << "# This file contains frame data\n"
-																	<< "# { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+	if (t==1)   oss	<< "# This file contains frame data\n"
+					<< "# { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
 	
 	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
 	
-	*sim->get_FS("guifile") << "{" << t << ", " << AParticlesList->size() + OtherParticlesList->size() << ", ";
+	oss << "{" << t << ", " << AParticlesList->size() + OtherParticlesList->size() << ", ";
 	
 	
 	bool first=true;
@@ -583,11 +589,11 @@ void GeometryCustom::OutputParticlePositions()
 				
 		if (first==false)
 		{  
-			*sim->get_FS("guifile") << ", ";
+			oss << ", ";
 		}
 
 		first = false;
-		*sim->get_FS("guifile") << "{"
+		oss << "{"
 						 << p->get_id() << ", "
 						 << p->get_type() << ", "
 						 << p->get_ghost() << ", "
@@ -605,11 +611,14 @@ void GeometryCustom::OutputParticlePositions()
 				
 		if (first==false)
 		{  
-			*sim->get_FS("guifile") << ", ";
+			oss << ", ";
 		}
 
 		first = false;
-		*sim->get_FS("guifile") << "{"
+		std::stringstream oss;
+		
+		
+		oss << "{"
 						 << p->get_id() << ", "
 						 << p->get_type() << ", "
 						 << p->get_ghost() << ", "
@@ -618,23 +627,28 @@ void GeometryCustom::OutputParticlePositions()
 						 << p->get_velx() << ", "
 						 << p->get_vely()
 						 << "}";											
-
+		
 			
 	}
 	
 	
-	*sim->get_FS("guifile") << "}" << std::endl;
+	oss << "}" << std::endl;
+	
+	fout->RegisterOutput("guifile",oss.str()); 
 }
 
 void GeometryCustom::OutputAverages()
 {	
 	int t = sim->get_t();
 	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
-	
-		*sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl;
-		*sim->get_FS("avfile") << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl;
-		*sim->get_FS("avfile") << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
-	
+		std::stringstream oss;
+		
+		
+		oss << "Time and space averaged quantities" << std::endl
+			<< "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl
+			<< "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
+		fout->RegisterOutput("avfile",oss.str());
+		
 	std::cout << "Writing final averages...done" << std::endl;
 	
 }
@@ -705,6 +719,19 @@ void GeometryCustom::OutputParticleCount()
 
 	 
  } 
+ 
+ 
+void GeometryCustom::InitialiseFiles()
+ {
+	// add files to outputter
+		
+	fout->AddFileStream("posfile", "posdata.txt");
+	fout->AddFileStream("guifile", "guidata.dat");
+	fout->AddFileStream("framevel", "framevel.txt");
+	fout->AddFileStream("Nd", "Nd.txt");
+	fout->AddFileStream("avfile", "averagesdata.txt");
+ 
+ }
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end

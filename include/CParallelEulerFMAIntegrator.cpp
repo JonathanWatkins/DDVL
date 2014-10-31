@@ -23,11 +23,13 @@ double BesselsForce(const double & dist_, CParallelEulerFMAIntegrator *integrato
 
 CParallelEulerFMAIntegrator::CParallelEulerFMAIntegrator(CSimulation *sim_)
 {
-	sim=new CSimulation;  // belongs to sim
+	M2=0;
+	M2Full=0;
+	M2Sum=0;
+	M2FullSum=0;
+	
 	// set pointers
 	sim=sim_;
-		
-	//initialse variables to 0
 	
 }
 
@@ -762,12 +764,12 @@ void CParallelEulerFMAIntegrator::VelocityRescaling(std::list<CParticle> * vorti
 	if (sim->get_t() % sim->get_framedataInterval()==0) std::cout << "Energy0: " << Energy0 << " FrameEnergy: " << FrameEnergy << std::endl;
 	
 	
-	for(std::list<CParticle>::iterator p = vorticesList->begin();
+	/*for(std::list<CParticle>::iterator p = vorticesList->begin();
 			p!=vorticesList->end(); ++p)
 	{
 		p->set_vel(alpha*p->get_velx(),alpha*p->get_vely());
 	}
-		
+	*/	
 	
 }
 	

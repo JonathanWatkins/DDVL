@@ -14,6 +14,7 @@
 #include "CDelLine.hpp"
 
 class CSimulation;
+class FileOutput;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //  class GeometryCustom
@@ -70,6 +71,7 @@ private:
 		void KeepParticlesInSimBoxXY();
 		void UserUpdates();
 		
+		void InitialiseFiles();
 		void LoadBatchFile();
 		void InitialiseParameters();
 		void GetPeriodicity();
@@ -110,6 +112,8 @@ private:
 	
         
         double xlo,ylo, xhi,yhi;
+        
+        FileOutput * fout;
                
 };
 

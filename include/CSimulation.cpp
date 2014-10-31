@@ -14,6 +14,7 @@
 #include "CRunningStats.hpp"
 #include "delaunay.hpp"
 #include "rv_library.hpp"
+#include "FileOutput.hpp"
 
 // IntegratorBase Types
 #include "CParallelEulerIntegrator.hpp"
@@ -21,8 +22,8 @@
 
 
 // GeometryBase Types
-#include "GeometryChannel.hpp"
-#include "GeometryTube.hpp"
+//#include "GeometryChannel.hpp"
+//#include "GeometryTube.hpp"
 #include "GeometryCustom.hpp"   
 
 
@@ -80,49 +81,8 @@ CSimulation::CSimulation()
 	DTtime=0;
 	ftime=0;
 	
-	// encapsulate
-	/*M2=0;
-	M2Full=0;
-	M2Sum=0;
-	M2FullSum=0;
-	avXVel=0;
-	avYVel=0;
-	framedataInterval=5;
-	cellSize=0;
-	binsize=0;
-	Nv=0;
-	Nmis=0;
-	Nd=0;
-	thermostat="";
-	lorentzForce=0;
-	jobtag="";
-
-	Ap=1;
-	DTcount=0;
-	fcount=0;
-	DTtime=0;
-	ftime=0;
-
-	applyBathVelocities=false;
-	applyStiffBath=false;
-	applyBounceBack=false;
-	applyMaxVelocities=false;
-	alt_pos_file=false;
-	pos_file_name="";
-	alt_pins_file=false;
-	pins_file_name="";
-	f0_rcut_correction=0;
-	f0bath_rcut_correction=0;
-	
-	Av=0;
-	Rv=0;
-	epsilon=0;
-	sigma=0;
-	vvForce=0;
-
-	*/
-	
-	
+	fout = new FileOutput;
+		
 
 }
 
@@ -131,6 +91,7 @@ CSimulation::~CSimulation()
 
 	delete geom;
 	delete integrator;
+	delete fout;
 }
 
 void CSimulation::Run()
@@ -167,11 +128,11 @@ void CSimulation::DoStep()
 	ftime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
 	fcount++;
 	
-	//startclock = clock();
-	//DelaunayTriangulation();
+	startclock = clock();
+	DelaunayTriangulation();
 	//delVortexList=vorticesList;	
-	//DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
-	//DTcount++;
+	DTtime+=(clock()-startclock)/(double)CLOCKS_PER_SEC;
+	DTcount++;
 	
 }
 
@@ -206,7 +167,7 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 		
 	// run initial functions
 	
-	InitialiseFiles();
+	InitialiseFileOutput();
 	
 	// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	
@@ -229,25 +190,16 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	return 0;
 }
 
-void CSimulation::InitialiseFiles()
+void CSimulation::InitialiseFileOutput()
 {
 	
 	// make new directory for data
-	std::cout << "Initialising files..." << std::endl;
-	fileOutputter.setJobDirectory(jobnum);
+	std::cout << "Initialising FileOutput..." << std::endl;
+	fout->SetJobDirectory(jobnum);
 	
-	// add files to outputter
-		
-	fileOutputter.addFileStream("jobheader", "jobheader.ini");
-	fileOutputter.addFileStream("posfile", "posdata.txt");
-	fileOutputter.addFileStream("guifile", "guidata.dat");
-	fileOutputter.addFileStream("framevel", "framevel.txt");
-	fileOutputter.addFileStream("Nd", "Nd.txt");
-	fileOutputter.addFileStream("avfile", "averagesdata.txt");
-	fileOutputter.addFileStream("pinsfile", "pinsdata.txt");
-	fileOutputter.addFileStream("wraptest", "wraptest.txt");
-    
-	std::cout << "   Files initialised.\n\n";
+	
+	
+	std::cout << "   FileOutput Initialised.\n\n";
 }
 
 void CSimulation::OutputSimulationTimes()
@@ -305,8 +257,8 @@ GeometryBase * CSimulation::CreateGeometry()
     
     switch(geometry)
     {
-        case 0:  return new GeometryChannel(this);            break;
-        case 1:  return new GeometryTube(this);             break;
+        //case 0:  return new GeometryChannel(this);            break;
+        //case 1:  return new GeometryTube(this);             break;
         case 2:  return new GeometryCustom(this);             break;
         default:   throw std::runtime_error("CSimulation:CreateOption()  Bad character");
     }
@@ -315,7 +267,7 @@ GeometryBase * CSimulation::CreateGeometry()
 IntegratorBase * CSimulation::SelectIntegrator()
 {
     //char o_type = inp_->GetOtype();
-    char integrator_type = 'A';  //  A = Parallel Euler integrator using F = M A
+    char integrator_type = 'V';  //  A = Parallel Euler integrator using F = M A
 								 //  V = Parallel Euler integrator using F = eta V
     switch(integrator_type)
     {
@@ -345,7 +297,7 @@ void CSimulation::DelaunayTriangulation()
 	ComputationalGeometry::DelaunayTriangulation(tmp,geom->GetTriangulatedParticlesList(),geom->GetTriangulatedLinesList());	
 }
 
-double CSimulation::get_M2Average() const { return integrator->GetM2Average(); }
+double CSimulation::get_M2Average() { return integrator->GetM2Average(); }
 	
 double CSimulation::get_time() const { return integrator->Getdt()*t; };  
 	

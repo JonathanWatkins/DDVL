@@ -23,7 +23,11 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator *integrator_)
 
 CParallelEulerIntegrator::CParallelEulerIntegrator(CSimulation *sim_)
 {
-	sim=new CSimulation;  // belongs to sim
+	M2=0;
+	M2Full=0;
+	M2Sum=0;
+	M2FullSum=0;
+	
 	// set pointers
 	sim=sim_;
 		
@@ -107,7 +111,7 @@ void CParallelEulerIntegrator::Integrate()
 	// loop over all cll comparing with lastcll and cllp lists
 	
 	
-	cilk_for(int i = 1; i < MAXLINKEDLISTSIZE-1; ++i)
+	for(int i = 1; i < MAXLINKEDLISTSIZE-1; ++i)
 	{
 		for(int j = 1; j < MAXLINKEDLISTSIZE-1; ++j)
 		{
@@ -292,8 +296,8 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_
 	}
 	else
 	{
-		force = boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
-		//force = 1.0/dist_ + dist_*dist_*dist_/rcut/rcut/rcut/rcut - 2*dist_/rcut/rcut;
+		//force = boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
+		force = 1.0/dist_ + dist_*dist_*dist_/rcut/rcut/rcut/rcut - 2*dist_/rcut/rcut;
 	}
 	
 	return force;

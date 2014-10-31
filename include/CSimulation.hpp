@@ -17,7 +17,7 @@
 #include "CVersion.hpp"
 #include "CBin.hpp"
 #include "CRunningStats.hpp"
-#include "CFileOutput.hpp"
+#include "FileOutput.hpp"
 
 // Base classes
 #include "GeometryBase.hpp"
@@ -61,7 +61,9 @@ public:
 	
 	int get_geometry() const {	return geometry; }
 	
-	std::ofstream* get_FS(const std::string & filestr) {return fileOutputter.getFS(filestr);}
+	//std::ofstream* get_FS(const std::string & filestr) {return fileOutputter.getFS(filestr);}
+	
+	FileOutput * GetFileOutput() { return fout; }
 	
 	int get_t() { return t; }  // sim owns
 
@@ -81,7 +83,7 @@ public:
 	
 	double get_yhi() { return geom->GetYHi(); }
 	
-	double get_M2Average() const;  // integrator owns
+	double get_M2Average();  // integrator owns
 	
 	double get_time() const; // integrator owns
 	
@@ -100,8 +102,8 @@ public:
 	
 	
 private:
-	
-	void InitialiseFiles();
+
+	void InitialiseFileOutput();
 	
 	void DoStep();
 	
@@ -154,7 +156,7 @@ private:
 	
 	int geometry;
 	
-	CFileOutput fileOutputter;
+	FileOutput * fout;
 	
 };
 
