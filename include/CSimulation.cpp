@@ -67,7 +67,7 @@ CSimulation::CSimulation()
 	endTime=0;
 	seedtime = 0;
 	lasttime=0;
-	std::string jobnum="";
+	jobnum="";
 	initialised=false;
 	geometry=0;
 	jobtag="";
@@ -83,6 +83,9 @@ CSimulation::CSimulation()
 	
 	fout = new FileOutput;
 		
+	//CVersion version;
+
+
 
 }
 
@@ -139,7 +142,7 @@ void CSimulation::DoStep()
 int CSimulation::Initialise(std::string jobBatchFileLocation_)
 {
 	// set initial variables to start values for the simulation
-	version.set_versionStr("1.0.0");	
+	//version.set_versionStr("1.0.0");	
 	startTime=clock();
 	seedtime = time(0);
 	lasttime=time(0);
@@ -147,14 +150,9 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 		
 	srand ( seedtime );
 		
-	// which order should these go XXXXXXXXXXXXXXXXXXXXXXXXXXx
 	
 	ReadVariableFromBatchFile(geometry,"Header.geometry");  // reads geometry from batch file
-	
-	geom = CreateGeometry();
-	
-	geom->InitialiseGeometry();
-	
+		
 	ReadVariableFromBatchFile(simulation_time,"Header.simulationTime");
 	
 	ReadVariableFromBatchFile<std::string>(jobtag, "Job.jobtag");  
@@ -164,19 +162,13 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	ReadVariableFromBatchFile(framedataInterval, "GeneralParameters.framedataInterval");
 	
 	AssignJobNumber();
+	
+	InitialiseFileOutput(); // must be done before initialise geometry
 		
-	// run initial functions
+	geom = CreateGeometry();
 	
-	InitialiseFileOutput();
-	
-	// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	
-	// calculate parameters
-	
-	//A=2*kB*temp/eta;
-	
-	// initialise integrator
-	
+	geom->InitialiseGeometry();
+		
 	integrator = SelectIntegrator();
 	
 	integrator->Initialise();

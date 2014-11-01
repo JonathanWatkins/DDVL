@@ -297,6 +297,12 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_
 	else
 	{
 		//force = boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
+		
+		//double io=0;
+		//double ipo=0;
+		//double kpo=0;
+		//rv::bessik(dist_/lambda, 1, io, force, ipo, kpo);
+		
 		force = 1.0/dist_ + dist_*dist_*dist_/rcut/rcut/rcut/rcut - 2*dist_/rcut/rcut;
 	}
 	

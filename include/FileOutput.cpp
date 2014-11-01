@@ -51,7 +51,7 @@ void FileOutput::SetJobDirectory(const std::string &  jobNum_)
 	#else
 		mkdir(jobDirectory.c_str(),0755);	
 	#endif
-	
+	std::cout << "Created jobdirectory " << jobDirectory << std::endl;
 
 }
 
