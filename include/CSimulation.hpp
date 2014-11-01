@@ -44,9 +44,6 @@ struct SMoves
 class CSimulation
 {
 	
-//	friend class CParallelEulerIntegrator; // should be using pure virtual base instead
-	
-
 public:
 	
 	CSimulation();
@@ -60,8 +57,6 @@ public:
 	// getters in header file
 	
 	int get_geometry() const {	return geometry; }
-	
-	//std::ofstream* get_FS(const std::string & filestr) {return fileOutputter.getFS(filestr);}
 	
 	FileOutput * GetFileOutput() { return fout; }
 	

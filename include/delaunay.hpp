@@ -1123,6 +1123,7 @@ void ComputationalGeometry::DelaunayTriangulation(const std::list<CParticle> &vo
 	
 		vorticesVector[p->id1].coordPlusOne();
 		vorticesVector[p->id2].coordPlusOne();
+
 	}
 	
 	std::copy( vorticesVector.begin(), vorticesVector.end(), std::back_inserter( *delVortexList_ ) );

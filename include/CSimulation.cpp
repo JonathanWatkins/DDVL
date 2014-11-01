@@ -122,7 +122,7 @@ void CSimulation::Run()
 
 void CSimulation::DoStep()
 {
-	if (0==t%100) std::cout << "t: " << t << std::endl;
+	if (0==t%framedataInterval) std::cout << "t: " << t << std::endl;
 	CalculateAndOutputFinishTime();
 	geom->PerStepUpdates();
 	

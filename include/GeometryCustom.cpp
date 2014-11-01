@@ -308,6 +308,7 @@ void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 	iList.clear();
 	std::list<CParticle>::iterator it = iList.end();
 	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
 	
 	if (wrapx==true && wrapy==false) WrapVorticesX(iList);
 	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
@@ -571,22 +572,28 @@ void GeometryCustom::OutputFinalParticlePositions()
 void GeometryCustom::OutputParticlePositions()
 {
 	std::stringstream oss;
-	int t = sim->get_t();	
-	if (t==1)   oss	<< "# This file contains frame data\n"
-					<< "# { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+	
+	
+	int t = sim->get_t();
+	static bool header = false;	
+	if (header==false)
+	{
+		header=true;
+		fout->RegisterOutput("guifile","# This file contains frame data\n # { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}");   
+	}
 	
 	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
 	
-	oss << "{" << t << ", " << AParticlesList->size() + OtherParticlesList->size() << ", ";
 	
-	
+	int activeParticleCount=0;
 	bool first=true;
-	for (std::list<CParticle>::iterator p = AParticlesList->begin();
-			p != AParticlesList->end(); ++p)
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+			p != triangulatedParticlesList->end(); ++p)
 	{
-				
+		if (p->get_ghost()==true) continue;		
+		activeParticleCount++;
 		if (first==false)
 		{  
 			oss << ", ";
@@ -600,12 +607,14 @@ void GeometryCustom::OutputParticlePositions()
 						 << p->get_x() << ", " 
 						 << p->get_y() << ", " 
 						 << p->get_velx() << ", "
-						 << p->get_vely()
+						 << p->get_vely() << ", "
+						 << p->get_coord_num()
 						 << "}";											
 
 			
 	}
-	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+	
+	/*for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
 			p != OtherParticlesList->end(); ++p)
 	{
 				
@@ -615,8 +624,7 @@ void GeometryCustom::OutputParticlePositions()
 		}
 
 		first = false;
-		std::stringstream oss;
-		
+			
 		
 		oss << "{"
 						 << p->get_id() << ", "
@@ -629,12 +637,18 @@ void GeometryCustom::OutputParticlePositions()
 						 << "}";											
 		
 			
-	}
+	}*/
 	
 	
-	oss << "}" << std::endl;
+	oss << "}";
 	
-	fout->RegisterOutput("guifile",oss.str()); 
+	std::stringstream oss2;
+	oss2 << "{" << t << ", " << activeParticleCount << ", ";
+	
+	oss2 << oss.str();
+	
+	
+	fout->RegisterOutput("guifile",oss2.str()); 
 }
 
 void GeometryCustom::OutputAverages()
