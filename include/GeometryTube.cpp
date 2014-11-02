@@ -16,6 +16,7 @@
 #include "GeometryTube.hpp"
 #include "CSimulation.hpp"
 #include "CParticle.hpp"
+#include "FileOutput.hpp"
 
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -24,8 +25,9 @@
 
 GeometryTube::GeometryTube(CSimulation * sim_)
 {
-	sim=new CSimulation;
 	sim=sim_;
+
+	fout = sim->GetFileOutput();
 	
 	triangulatedParticlesList = new std::list<CParticle>;
     triangulatedLinesList = new std::list<CDelLine>;
@@ -68,7 +70,10 @@ GeometryTube::GeometryTube(CSimulation * sim_)
         
     Nd=0;
 	Nv=0;
-	Nmis=0;    
+	Nmis=0;
+	
+	wrapx = false;
+	wrapy = false;    
 	
 }
 
@@ -130,6 +135,7 @@ void GeometryTube::LoadBatchFile()
 
 void GeometryTube::InitialiseGeometry()
 {
+	InitialiseFiles();
 	LoadBatchFile();
 	InitialiseParameters();
 	InitialiseVortices();
@@ -154,6 +160,8 @@ void GeometryTube::InitialiseParameters()
 	sinkDensity=(int)(bathLength*bathWidth*sinkBfield/Phi); 
 	channelDensity=(int)(channelLength*(channelWidth+b0)*((sourceBfield+sinkBfield)/Phi)/2.0); 	
 	
+	wrapx = false;
+	wrapy = true;
 
 	std::cout << "a0: " << a0
 			  << "Phi: " << Phi
@@ -375,23 +383,37 @@ void GeometryTube::AddParticlesForDT(std::list<CParticle> & iList)
 	iList.clear();
 	std::list<CParticle>::iterator it = iList.end();
 	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+	//iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
 	
-	WrapVortices(iList);
+	//if (wrapx==true && wrapy==false) WrapVorticesX(iList);
+	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
+	//if (wrapx==true && wrapy==true) WrapVorticesXY(iList);
 	
-	static bool once = false;
-	if (once == true ) return;
-	for(std::list<CParticle>::iterator p = iList.begin();
-			p != iList.end(); ++p)
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// Temp code for testing the wrapping in the tube geomery
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+	static bool doneoutput = false;
+	
+	if (doneoutput==true) return;
+	
+	fout->AddFileStream("wraptest","wraptest.txt");
+	std::stringstream oss;
+	for (std::list<CParticle>::iterator p = iList.begin();
+		p != iList.end(); ++p)
 	{
-		*sim->get_FS("wraptest") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y() << std::endl;
 		
-		if ( std::distance(p,iList.end()) != 1 )
-		{
-			*sim->get_FS("wraptest") << std::endl;
-		}
 	}
-	once = true;
 	
+	doneoutput=true;
+	
+	fout->RegisterOutput("wraptest", oss.str());
+	
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// End of Temp code for testing the wrapping in the tube geomery
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+		
 }
 
 double GeometryTube::GetRemovalSourceX() const
@@ -619,7 +641,7 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_)
 double GeometryTube::CalcSinkB() const
 {
 	
-	/*double aaverage=0;
+	double aaverage=0;
 	int numa=0;
 	for (std::list<CDelLine>::iterator p = triangulatedLinesList->begin();
 				p!=triangulatedLinesList->end(); ++p)
@@ -641,8 +663,8 @@ double GeometryTube::CalcSinkB() const
 	aaverage=aaverage/(double)numa;
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
-	*/
 	
+	/*
 	int np=0;
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 				p!=AParticlesList->end(); ++p)
@@ -663,13 +685,13 @@ double GeometryTube::CalcSinkB() const
 	//std::cout << "Sink B: "  << B  << " " << 2*Phi/(sqrt((double)3)*aaverage*aaverage) << std::endl;
 	
 	return B;
-	
+	*/
 }
 
 double GeometryTube::CalcSourceB() const
 {
 	
-	/*double aaverage=0;
+	double aaverage=0;
 	int numa=0;
 	
 	//if (triangulatedLinesList->size() == 0) throw std::runtime_error("GeometryTube::CalcSourceB() No triangulated particles");
@@ -695,8 +717,8 @@ double GeometryTube::CalcSourceB() const
 	aaverage=aaverage/(double)numa;
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
-	*/
 	
+	/*
 	int np=0;
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 				p!=AParticlesList->end(); ++p)
@@ -717,7 +739,7 @@ double GeometryTube::CalcSourceB() const
 	//std::cout << "Sink B: "  << B  << " " << 2*Phi/(sqrt((double)3)*aaverage*aaverage) << std::endl;
 	
 	return B;
-	
+	*/
 	
 }
 
@@ -741,38 +763,6 @@ void GeometryTube::PerStepUpdates()
 	UpdateBathDensities();
 	ReplaceEscapedVortices();	
 	
-}
-
-void GeometryTube::WrapVortices(std::list<CParticle>& iList)
-{
-		
-	// Add periodic y particles	
-	double wrapsize = forcerange;
-	double ysize = channelWidth+b0;
-	
-	for (std::list<CParticle>::iterator p = AParticlesList->begin();
-		p!=AParticlesList->end(); ++p )
-	{
-			if (p->get_y() <= wrapsize)  // forcerange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
-				newVortex.set_type('B');
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-			if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
-			{
-				CParticle newVortex;
-				newVortex = (*p);
-				newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
-				newVortex.set_type('B');
-				newVortex.set_ghost();
-				iList.push_back(newVortex);
-			}
-	}
-
 }
 
 void GeometryTube::CalculateAndOutputAvVel()
@@ -808,74 +798,114 @@ void GeometryTube::CalculateAndOutputAvVel()
 	avXVel=avXVel+spaceSumX/(double)count;
 	avYVel=avYVel+spaceSumY/(double)count;
 	int t = sim->get_t();
-	*sim->get_FS("framevel") << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << avXVel/t << " " << avYVel/t << std::endl;
+	std::stringstream oss;
+	
+	oss << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << avXVel/t << " " << avYVel/t << std::endl;
+	
+	fout->RegisterOutput("framevel",oss.str()); 
+	
 	if (t%sim->get_framedataInterval()==0) std::cout << t << " " << spaceSumX/double(count) << " " << spaceSumY/double(count) << " " << avXVel/t << " " << avYVel/t << std::endl;
 	
 	
 }
 
+
 void GeometryTube::OutputFinalParticlePositions()
 {
+	
 	int t = sim->get_t();
 	int simulation_time = sim->get_simulation_time();
 	// At the end of the simulation, output vortex positions
-	if (t==sim->get_simulation_time()+1)
+	if (t!=sim->get_simulation_time()+1) return;
+	
+	std::stringstream oss;
+		
+	for(std::list<CParticle>::iterator p = AParticlesList->begin();
+		p != AParticlesList->end(); ++p)
 	{
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y();
 		
-		for(std::list<CParticle>::iterator p = AParticlesList->begin();
-			p != AParticlesList->end(); ++p)
+		if ( std::distance(p,AParticlesList->end()) != 1 )
 		{
-			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
-			
-			if ( std::distance(p,AParticlesList->end()) != 1 )
-			{
-				*sim->get_FS("posfile") << std::endl;
-			}
+			oss << std::endl;
 		}
-		
-		for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
-			p != OtherParticlesList->end(); ++p)
-		{
-			*sim->get_FS("posfile") << p->get_type() << " " << p->get_x() << " " << p->get_y();
-			
-			if ( std::distance(p,OtherParticlesList->end()) != 1 )
-			{
-				*sim->get_FS("posfile") << std::endl;
-			}
-		}
-		
-		
-		
-		std::cout << "Writing final vortex positions...done" << std::endl;
 	}
+	
+	for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p != OtherParticlesList->end(); ++p)
+	{
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		
+		if ( std::distance(p,OtherParticlesList->end()) != 1 )
+		{
+			oss << std::endl;
+		}
+	}
+	
+	fout->RegisterOutput("posfile", oss.str());
+	
+	std::cout << "Writing final vortex positions...done" << std::endl;
+	
 }
 
 void GeometryTube::OutputParticlePositions()
 {
+	std::stringstream oss;
 	
-	int t = sim->get_t();	
-	if (t==1) *sim->get_FS("guifile") << "# This file contains frame data\n"
-																	<< "# { t, numofparticles, {x1,y1,velx1,vely1,coordnum1},...,{xN,yN,velxN,velyN,coordnumN}}" << std::endl; 
+	
+	int t = sim->get_t();
+	static bool header = false;	
+	if (header==false)
+	{
+		header=true;
+		fout->RegisterOutput("guifile","# This file contains frame data\n # { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}");   
+	}
 	
 	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
 	
-	*sim->get_FS("guifile") << "{" << t << ", " << triangulatedParticlesList->size() << ", ";
 	
-	
+	int activeParticleCount=0;
 	bool first=true;
 	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
 			p != triangulatedParticlesList->end(); ++p)
 	{
-				
+		if (p->get_ghost()==true) continue;		
+		activeParticleCount++;
 		if (first==false)
 		{  
-			*sim->get_FS("guifile") << ", ";
+			oss << ", ";
 		}
 
 		first = false;
-		*sim->get_FS("guifile") << "{"
+		oss << "{"
+						 << p->get_id() << ", "
+						 << p->get_type() << ", "
+						 << p->get_ghost() << ", "
+						 << p->get_x() << ", " 
+						 << p->get_y() << ", " 
+						 << p->get_velx() << ", "
+						 << p->get_vely() << ", "
+						 << p->get_coord_num()
+						 << "}";											
+
+			
+	}
+	
+	/*for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+			p != OtherParticlesList->end(); ++p)
+	{
+				
+		if (first==false)
+		{  
+			oss << ", ";
+		}
+
+		first = false;
+			
+		
+		oss << "{"
 						 << p->get_id() << ", "
 						 << p->get_type() << ", "
 						 << p->get_ghost() << ", "
@@ -884,24 +914,36 @@ void GeometryTube::OutputParticlePositions()
 						 << p->get_velx() << ", "
 						 << p->get_vely()
 						 << "}";											
-
+		
 			
-	}
+	}*/
 	
-	*sim->get_FS("guifile") << "}" << std::endl;
+	
+	oss << "}";
+	
+	std::stringstream oss2;
+	oss2 << "{" << t << ", " << activeParticleCount << ", ";
+	
+	oss2 << oss.str();
+	
+	
+	fout->RegisterOutput("guifile",oss2.str()); 
 }
 
 void GeometryTube::OutputAverages()
 {	
 	int t = sim->get_t();
-	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
-	
-		*sim->get_FS("avfile") << "Time and space averaged quantities" << std::endl;
-		*sim->get_FS("avfile") << "  velx of channel vortices: " << avXVel/t << std::endl;
-		*sim->get_FS("avfile") << "  vely of channel vortices: " << avYVel/t << std::endl;
-		*sim->get_FS("avfile") << "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl;
-		*sim->get_FS("avfile") << "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
-	
+	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("GeometryTube::OutputAverages() Averages must be output at the end of the simulation.");
+		
+	std::stringstream oss;	
+	oss << "Time and space averaged quantities" << std::endl
+		<< "  velx of channel vortices: " << avXVel/t << std::endl
+		<< "  vely of channel vortices: " << avYVel/t << std::endl
+		<< "  M2 (just stochastic term): " << sim->get_M2Average() << std::endl
+		<< "  M2 (all terms): " << sim->get_M2FullAverage() << std::endl;
+		
+	fout->RegisterOutput("avfile",oss.str());
+		
 	std::cout << "Writing final averages...done" << std::endl;
 	
 }
@@ -932,7 +974,9 @@ void GeometryTube::CalculateAndOutputNd()
 	}
 	
 	Nd=Nmis/(double)Nv;
-	*sim->get_FS("Nd") << sim->get_t() << " " << Nd << std::endl;
+	std::stringstream oss;
+	oss << sim->get_t() << " " << Nd << std::endl;
+	fout->RegisterOutput("Nd", oss.str());
 }
 
 std::list<CParticle> * GeometryTube::GetIParticles()
@@ -940,20 +984,86 @@ std::list<CParticle> * GeometryTube::GetIParticles()
 	return AParticlesList;
 }
 
-void GeometryTube::GetJParticles(std::list<CParticle> & iList)
+void GeometryTube::GetJParticles(std::list<CParticle> & jList)
 {
 	// Add A particles
-	iList.clear();
-	std::list<CParticle>::iterator it = iList.end();
-	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+	jList.clear();
+	std::list<CParticle>::iterator it = jList.end();
+	jList.insert(it,AParticlesList->begin(),AParticlesList->end());
 
 
 	// Add CE particles
-	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
-
-	WrapVortices(iList);
+	jList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
+	return;
+	//if (wrapx==true && wrapy==false) WrapVorticesX(jList);
+	if (wrapx==false && wrapy==true) WrapVorticesY(jList);
+	//if (wrapx==true && wrapy==true) WrapVorticesXY(jList);
 
 }
+ 
+void GeometryTube::InitialiseFiles()
+{
+	// add files to outputter
+		
+	fout->AddFileStream("posfile", "posdata.txt");
+	fout->AddFileStream("guifile", "guidata.dat");
+	fout->AddFileStream("framevel", "framevel.txt");
+	fout->AddFileStream("Nd", "Nd.txt");
+	fout->AddFileStream("avfile", "averagesdata.txt");
+ 
+ }
+ 
+void GeometryTube::WrapVorticesY(std::list<CParticle>& jList)
+{
+		
+	// Add periodic y particles	
+	double wrapsize = forcerange;
+	
+	for (std::list<CParticle>::iterator p = AParticlesList->begin();
+		p!=AParticlesList->end(); ++p )
+	{
+		DoWrapY(p, jList);
+	}
+	/*for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p!=OtherParticlesList->end(); ++p )
+	{
+		DoWrapY(p, jList);
+	}*/
+
+}
+
+
+
+
+void GeometryTube::DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+{
+	
+	double wrapsize = forcerange;
+	double ysize = channelWidth+b0;
+	
+	if (p->get_y() <= wrapsize)  // forcerange
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+ysize);
+		newVortex.set_type('B');
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+	if (p->get_y() >= ysize-wrapsize) //channelWidth-forceRange
+	{
+		CParticle newVortex;
+		newVortex = (*p);
+		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-ysize);
+		newVortex.set_type('B');
+		newVortex.set_ghost();
+		jList.push_back(newVortex);
+	}
+	
+	
+}
+
+
  
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

@@ -14,6 +14,7 @@
 #include "CDelLine.hpp"
 
 class CSimulation;
+class FileOutput;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //  class GeometryTube
@@ -62,13 +63,17 @@ private:
 		void UpdateBathDensities();
 		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
 		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
-		void WrapVortices(std::list<CParticle>& iList);
+		
+		void WrapVorticesY(std::list<CParticle>& jList);
+		void DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
+		
 		void LoadBatchFile();
 		double CalcSinkB() const;
 		double CalcSourceB() const;	
 		void InitialiseRandomMobileParticles();
 		void InitialiseCEParticles();
 		void InitialiseParameters();
+		void InitialiseFiles();
 				 
     	// Analysis functions
 		void CalculateAndOutputAvVel();
@@ -128,6 +133,11 @@ private:
         int Nd;
 		int Nv;
 		int Nmis;
+		
+		FileOutput * fout;
+		
+		bool wrapx;
+		bool wrapy;
               
 };
 

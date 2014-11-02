@@ -12,7 +12,7 @@
 #include "CVersion.hpp"
 #include "CCell.hpp"
 #include "CRunningStats.hpp"
-#include "delaunay.hpp"
+#include "DTwrapper.hpp"
 #include "rv_library.hpp"
 #include "FileOutput.hpp"
 
@@ -23,7 +23,7 @@
 
 // GeometryBase Types
 //#include "GeometryChannel.hpp"
-//#include "GeometryTube.hpp"
+#include "GeometryTube.hpp"
 #include "GeometryCustom.hpp"   
 
 
@@ -250,9 +250,9 @@ GeometryBase * CSimulation::CreateGeometry()
     switch(geometry)
     {
         //case 0:  return new GeometryChannel(this);            break;
-        //case 1:  return new GeometryTube(this);             break;
+        case 1:  return new GeometryTube(this);   	          break;
         case 2:  return new GeometryCustom(this);             break;
-        default:   throw std::runtime_error("CSimulation:CreateOption()  Bad character");
+        default:   throw std::runtime_error("CSimulation:CreateGeometry()  Bad character");
     }
 }
 
@@ -283,9 +283,11 @@ void CSimulation::AssignJobNumber()
 
 void CSimulation::DelaunayTriangulation()
 {
-	
+	if (t%triangulationInterval!=0) return;
 	std::list<CParticle> tmp;
 	geom->AddParticlesForDT(tmp);
+	//std::cout << "num particles: " << tmp.size() << std::endl;
+	//return;
 	ComputationalGeometry::DelaunayTriangulation(tmp,geom->GetTriangulatedParticlesList(),geom->GetTriangulatedLinesList());	
 }
 

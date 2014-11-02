@@ -54,16 +54,21 @@ include/CParallelEulerIntegrator.cpp
 include/CParallelEulerFMAIntegrator.cpp
 include/GeometryBase.cpp
 #include/GeometryChannel.cpp
-#include/GeometryTube.cpp
+include/GeometryTube.cpp
 include/GeometryCustom.cpp
 include/rv_library.cpp
+)
+
+add_library(DTlib
+include/delaunay.cpp
+include/DTwrapper.cpp
 )
 
 
 add_executable(DDVL DDVL.cpp)
 
 # - Link DDVL to the DDVL library
-target_link_libraries(DDVL DDVLlib)
+target_link_libraries(DDVL DDVLlib DTlib)
 
 # - Install DDVL to the bin subdirectory of CMAKE_INSTALL_PREFIX
 #install(TARGETS DDVL DESTINATION bin)
