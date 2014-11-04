@@ -9,8 +9,8 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=LINUX)
 	set(CMAKE_CXX_COMPILER "icc")
-#	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2" )
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
+#	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++11" )
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11" )
 ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=NOTLINUX)
 	set(CMAKE_CXX_COMPILER "icl")
@@ -57,6 +57,7 @@ include/GeometryBase.cpp
 include/GeometryTube.cpp
 include/GeometryCustom.cpp
 include/rv_library.cpp
+include/thermostats.cpp
 )
 
 add_library(DTlib

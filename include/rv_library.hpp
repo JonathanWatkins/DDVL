@@ -6,6 +6,7 @@
 //***************************************************************************
 
 #include <vector>
+#include <inttypes.h>
 
 namespace RandomVariableStatisticalFunctions
 {
@@ -19,7 +20,10 @@ namespace RandomVariableStatisticalFunctions
     //***************************************************************************
     //  Prototypes
     //***************************************************************************
-
+		
+		uint_fast32_t MT_rand();						//Random positive integers (32 bit) using Mersenne Twister and c++11
+		double MT_rand_U();					//U(0,1) distribution using Mersenne Twister and c++11
+		double MT_rand_N();					//N(0,1) distribution using Mersenne Twister and c++11
 		double n_probs(double);				//Normal density function
 		double ran0();						//ex Numerical recipes (slightly modified)
 	    double my_ran2();           		//ex Numerical recipes,  modifed to use static

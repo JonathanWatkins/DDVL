@@ -14,6 +14,7 @@
 #include "rv_library.hpp" 
 #include "CSimulation.hpp"
 #include "GeometryBase.hpp"
+#include "thermostats.hpp"
 
 
 // force prototypes
@@ -122,7 +123,6 @@ void CParallelEulerIntegrator::Integrate()
 									p != (*cll[i][j].get_cellList()).end(); ++p)
 				{
 					
-				
 					// initialise forces to be zero
 					double force[2]={0,0};
 					double vortexForce[2]={0,0};
@@ -131,7 +131,7 @@ void CParallelEulerIntegrator::Integrate()
 					double tempForce[2]={0,0};
 					
 					// calculate forces due to temperature kick 
-					temperatureInteraction(tempForce);
+					thermostats::Andersen(temp, kB, eta, dt, tau, tempForce);
 					
 					// is the vortex in the bath (so will need stiff lattice adjustment
 										
@@ -238,45 +238,6 @@ void CParallelEulerIntegrator::Integrate()
 
 //*************************************************************************************************************
 // 
-//	Besseling paper log form of potential
-//
-//  	Cannot have inbath interaction, as this requires lambda=1.11
-//
-//*************************************************************************************************************
-
-/*double BessLogForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
-{
-	double force=0;
-	
-	double rcut = sim_->get_forceRange();
-	
-	//double thislambda = sim_->get_lambda();
-	
-	//double lambda2=thislambda*thislambda;
-	
-	if (dist_==0)
-	{
-		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(rv::GetNormalVariate());
-	}
-	//else if (dist_< 0.5*sim_->get_a0())
-	//{
-		//force = thisf0*boost::math::cyl_bessel_k(1,  0.5*sim_->get_a0()/thislambda)-thisf0_rcut_correction;
-	//}
-	else
-	{
-		//force = thisf0*boost::math::cyl_bessel_k(1,  dist_/thislambda)-thisf0_rcut_correction;
-		double factor= (1- (dist_/rcut) * (dist_/rcut));
-		
-		force = (1.0/dist_) * factor * factor;
-	}
-	
-	return force;
-}
-*/
-
-//*************************************************************************************************************
-// 
 //	Calculates forces on particles
 //
 //		Uses cell linked list, and parallelised using cilk
@@ -292,7 +253,7 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_
 	if (dist_==0)
 	{
 		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(rv::GetNormalVariate());
+		force=0.0000000001*fabs(rv::MT_rand_N());
 	}
 	else
 	{
@@ -458,7 +419,7 @@ double CParallelEulerIntegrator::forceForm(double dist_, bool inbath_)
 	if (dist_==0)
 	{
 		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(rv::GetNormalVariate());
+		force=0.0000000001*fabs(rv::MT_rand_N());
 	}
 	else
 	{
@@ -535,61 +496,6 @@ int CParallelEulerIntegrator::what_jcell(std::list<CParticle>::iterator a_) cons
 	
 	else return j;
 
-}
-
-double CParallelEulerIntegrator::AndersonTS() const
-{
-	double p=dt/tau;
-	if (p>rand()/(double)RAND_MAX)
-	{	
-		
-		return sqrt(2*temp*kB*eta/dt/p)*rv::GetNormalVariate();
-	}
-	else
-	{
-		return 0;
-			
-	}
-}
-
-double CParallelEulerIntegrator::LindemanTS() const
-{
-	return sqrt((double)temp)*rv::GetNormalVariate();
-	
-}
-
-
-//*************************************************************************************************************
-// 
-// Calculates the force due to the thermostat
-//
-//
-//*************************************************************************************************************
-
-void CParallelEulerIntegrator::temperatureInteraction(double (&tempForce_)[2])
-{
-	
-	//if (q_->get_x()>bathLength && q_->get_x()<bathLength+channelLength)
-		//{
-		if ("Lindeman"==thermostat){
-			
-			tempForce_[0]=LindemanTS();
-			tempForce_[1]=LindemanTS();
-		}
-		else if ("Anderson"==thermostat)
-		{
-			tempForce_[0]=AndersonTS();
-			tempForce_[1]=AndersonTS();
-		}
-		
-		if (tempForce_[0]!=tempForce_[0] || tempForce_[1] != tempForce_[1]) {
-			std::cout << "t: " << sim->get_t() << "temp nan" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
-			tempForce_[0]=0;
-			tempForce_[1]=0;
-		}
-		if (boost::math::isinf(tempForce_[0]) || boost::math::isinf(tempForce_[1]))
-		std::cout << "t: " << sim->get_t() << "temperature inf" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
-		//}
 }
 
 //*************************************************************************************************************
