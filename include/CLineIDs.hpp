@@ -35,12 +35,27 @@ public:
 		return false;
 	};
 	
+	friend bool operator< (const CLineIDs& lhs_, const CLineIDs& rhs_)
+	{
+		if(lhs_.id1 == rhs_.id1)
+				return lhs_.id2 >= rhs_.id2;
+		else if(lhs_.id1 != rhs_.id1)
+				return lhs_.id1 >= rhs_.id1;
+			
+		return false;
+	};
+	
 	bool operator== (const CLineIDs& lhs_)
 	{
 		return (lhs_.id1 == id1 && lhs_.id2 == id2);
 				
 	};
 	
+	friend bool operator== (const CLineIDs& lhs_, const CLineIDs& rhs_)
+	{
+		return (lhs_.id1 == rhs_.id1 && lhs_.id2 == rhs_.id2);
+				
+	};
 	
 	
 };
