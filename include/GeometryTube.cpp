@@ -107,7 +107,7 @@ void GeometryTube::LoadBatchFile()
 	channelLength*=a0;
 	channelWidth*=b0;
 	bathLength*=a0;
-	channelWidth*=b0;
+	bathWidth*=b0;
 	
 	
 	// analysis variables
@@ -152,8 +152,8 @@ void GeometryTube::InitialiseParameters()
 	removesourcex=-a0/2;
 	removesinkx=bathLength+channelLength+bathLength+a0;
 	
-	removetopchannely=-b0/2;
-	removebottomchannely=channelWidth+b0/2;
+	removetopchannely=0;
+	removebottomchannely=channelWidth+b0;
 	
 	
 	sourceDensity=(int)(bathLength*bathWidth*sourceBfield/Phi); 
@@ -294,12 +294,13 @@ void GeometryTube::ReplaceEscapedVortices()
 		}	
 	
 	  //continue;
-		if ((y <= removetopchannely) &&  (x > removesourcex) )
+		if (y <= removetopchannely )
 		{
 			//std::cout << "wrapped at (" <<  x << ", " << y << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
 			p->set_pos(x,y+channelWidth+b0);
 		}
-		else if ((y >= removebottomchannely) &&  (x > removesourcex) )
+		
+		if (y >= removebottomchannely )
 		{
 			//std::cout << "wrapped at (" <<  x << ", " << y << ") vel (" << p->get_velx() << ", " << p->get_vely() << ")" << std::endl;  
 			p->set_pos(x,y-channelWidth-b0);
@@ -389,30 +390,7 @@ void GeometryTube::AddParticlesForDT(std::list<CParticle> & iList)
 	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
 	//if (wrapx==true && wrapy==true) WrapVorticesXY(iList);
 	
-	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	// Temp code for testing the wrapping in the tube geomery
-	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
-	static bool doneoutput = false;
 	
-	if (doneoutput==true) return;
-	
-	fout->AddFileStream("wraptest","wraptest.txt");
-	std::stringstream oss;
-	for (std::list<CParticle>::iterator p = iList.begin();
-		p != iList.end(); ++p)
-	{
-		oss << p->get_type() << " " << p->get_x() << " " << p->get_y() << std::endl;
-		
-	}
-	
-	doneoutput=true;
-	
-	fout->RegisterOutput("wraptest", oss.str());
-	
-	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-	// End of Temp code for testing the wrapping in the tube geomery
-	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 		
 }
 
@@ -641,7 +619,7 @@ bool GeometryTube::RemoveParticleFromBath(std::string location_)
 double GeometryTube::CalcSinkB() const
 {
 	
-	double aaverage=0;
+	/*double aaverage=0;
 	int numa=0;
 	for (std::list<CDelLine>::iterator p = triangulatedLinesList->begin();
 				p!=triangulatedLinesList->end(); ++p)
@@ -663,8 +641,8 @@ double GeometryTube::CalcSinkB() const
 	aaverage=aaverage/(double)numa;
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
+	*/
 	
-	/*
 	int np=0;
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 				p!=AParticlesList->end(); ++p)
@@ -685,13 +663,13 @@ double GeometryTube::CalcSinkB() const
 	//std::cout << "Sink B: "  << B  << " " << 2*Phi/(sqrt((double)3)*aaverage*aaverage) << std::endl;
 	
 	return B;
-	*/
+	
 }
 
 double GeometryTube::CalcSourceB() const
 {
 	
-	double aaverage=0;
+	/*double aaverage=0;
 	int numa=0;
 	
 	//if (triangulatedLinesList->size() == 0) throw std::runtime_error("GeometryTube::CalcSourceB() No triangulated particles");
@@ -717,8 +695,8 @@ double GeometryTube::CalcSourceB() const
 	aaverage=aaverage/(double)numa;
 	
 	return 2*Phi/(sqrt((double)3)*aaverage*aaverage);	 // B effective
+	*/
 	
-	/*
 	int np=0;
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 				p!=AParticlesList->end(); ++p)
@@ -739,7 +717,7 @@ double GeometryTube::CalcSourceB() const
 	//std::cout << "Sink B: "  << B  << " " << 2*Phi/(sqrt((double)3)*aaverage*aaverage) << std::endl;
 	
 	return B;
-	*/
+	
 	
 }
 
@@ -858,13 +836,13 @@ void GeometryTube::OutputParticlePositions()
 	if (header==false)
 	{
 		header=true;
-		fout->RegisterOutput("guifile","# This file contains frame data\n # { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}");   
+		fout->RegisterOutput("guifile","# This file contains frame data\n # { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}\n");   
 	}
 	
 	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
-	
+
 	
 	int activeParticleCount=0;
 	bool first=true;
@@ -893,6 +871,8 @@ void GeometryTube::OutputParticlePositions()
 			
 	}
 	
+	std::cout << activeParticleCount << std::endl;
+	
 	/*for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
 			p != OtherParticlesList->end(); ++p)
 	{
@@ -919,14 +899,14 @@ void GeometryTube::OutputParticlePositions()
 	}*/
 	
 	
-	oss << "}";
+	oss << "}" << std::endl;;
 	
 	std::stringstream oss2;
 	oss2 << "{" << t << ", " << activeParticleCount << ", ";
 	
 	oss2 << oss.str();
 	
-	
+	//std::cout << oss2.str();
 	fout->RegisterOutput("guifile",oss2.str()); 
 }
 

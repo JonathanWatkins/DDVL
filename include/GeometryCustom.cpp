@@ -250,6 +250,7 @@ void GeometryCustom::TestX(std::list<CParticle>::iterator p)
 		double testx = x+delx;
 		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
 		p->set_x(testx);
+		//std::cout << testx << std::endl;
 	}
 			
 	if (x > xhi && x < xhi+forcerange )  // right of sim box in xhi < x < xhi
@@ -257,6 +258,7 @@ void GeometryCustom::TestX(std::list<CParticle>::iterator p)
 		double testx = x-delx;
 		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
 		p->set_x(testx);
+		//std::cout << testx << std::endl;
 	}
 	
 	
@@ -308,26 +310,37 @@ void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 	iList.clear();
 	std::list<CParticle>::iterator it = iList.end();
 	iList.insert(it,AParticlesList->begin(),AParticlesList->end());
+	//return;
 	iList.insert(it,OtherParticlesList->begin(),OtherParticlesList->end());
 	
 	if (wrapx==true && wrapy==false) WrapVorticesX(iList);
 	if (wrapx==false && wrapy==true) WrapVorticesY(iList);
 	if (wrapx==true && wrapy==true) WrapVorticesXY(iList);
 	
-	/*static bool once = false;
-	if (once == true ) return;
-	for(std::list<CParticle>::iterator p = iList.begin();
-			p != iList.end(); ++p)
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// Temp code for testing the wrapping in the tube geomery
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+	/*static bool doneoutput = false;
+	
+	if (doneoutput==true) return;
+	
+	fout->AddFileStream("wraptest","wraptest.txt");
+	std::stringstream oss;
+	for (std::list<CParticle>::iterator p = iList.begin();
+		p != iList.end(); ++p)
 	{
-		*sim->get_FS("wraptest") << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y() << std::endl;
 		
-		if ( std::distance(p,iList.end()) != 1 )
-		{
-			*sim->get_FS("wraptest") << std::endl;
-		}
 	}
-	once = true;
+	
+	doneoutput=true;
+	
+	fout->RegisterOutput("wraptest", oss.str());
 	*/
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// End of Temp code for testing the wrapping in the tube geomery
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 }
 
 void GeometryCustom::PerStepAnalysis()
@@ -372,7 +385,6 @@ void GeometryCustom::WrapVorticesY(std::list<CParticle>& jList)
 {
 		
 	// Add periodic y particles	
-	double wrapsize = forcerange;
 	
 	for (std::list<CParticle>::iterator p = AParticlesList->begin();
 		p!=AParticlesList->end(); ++p )
@@ -418,6 +430,7 @@ void GeometryCustom::DoWrapX(std::list<CParticle>::iterator p, std::list<CPartic
 		CParticle newVortex;
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
+		newVortex.set_type('B');
 		newVortex.set_ghost();
 		jList.push_back(newVortex);
 	}
@@ -427,6 +440,7 @@ void GeometryCustom::DoWrapX(std::list<CParticle>::iterator p, std::list<CPartic
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 }
@@ -440,6 +454,7 @@ void GeometryCustom::DoWrapY(std::list<CParticle>::iterator p, std::list<CPartic
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 	if (p->get_y() >= yhi-forcerange) //channelWidth-forceRange
@@ -448,6 +463,7 @@ void GeometryCustom::DoWrapY(std::list<CParticle>::iterator p, std::list<CPartic
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 }
@@ -461,6 +477,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()+dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -470,6 +487,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x(),newVortex.get_y()-dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -479,6 +497,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y());
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -488,6 +507,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y());
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -498,6 +518,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()+dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -507,6 +528,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()-dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -516,6 +538,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()-delx,newVortex.get_y()+dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -525,6 +548,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 		newVortex = (*p);
 		newVortex.set_pos(newVortex.get_x()+delx,newVortex.get_y()-dely);
 		newVortex.set_ghost();
+		newVortex.set_type('B');
 		jList.push_back(newVortex);
 	}
 
@@ -579,13 +603,13 @@ void GeometryCustom::OutputParticlePositions()
 	if (header==false)
 	{
 		header=true;
-		fout->RegisterOutput("guifile","# This file contains frame data\n # { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}");   
+		fout->RegisterOutput("guifile","# This file contains frame data\n # { t, numofparticles, {id1,type1,ghost1,x1,y1,velx1,vely1,coordnum1},...,{idN, typoN, ghostN, xN,yN,velxN,velyN,coordnumN}}\n");   
 	}
 	
 	if (t%sim->get_triangulationInterval()!=0 || t%sim->get_framedataInterval()!=0) return;
 	
 	// counts number of active particles
-	
+
 	
 	int activeParticleCount=0;
 	bool first=true;
@@ -614,6 +638,8 @@ void GeometryCustom::OutputParticlePositions()
 			
 	}
 	
+	std::cout << activeParticleCount << std::endl;
+	
 	/*for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
 			p != OtherParticlesList->end(); ++p)
 	{
@@ -640,14 +666,14 @@ void GeometryCustom::OutputParticlePositions()
 	}*/
 	
 	
-	oss << "}";
+	oss << "}" << std::endl;;
 	
 	std::stringstream oss2;
 	oss2 << "{" << t << ", " << activeParticleCount << ", ";
 	
 	oss2 << oss.str();
 	
-	
+	//std::cout << oss2.str();
 	fout->RegisterOutput("guifile",oss2.str()); 
 }
 
@@ -694,7 +720,7 @@ void GeometryCustom::GetPeriodicity()
 	std::string pstr;
 	sim->ReadVariableFromBatchFile(pstr, "Geometry.periodicity");
 	// if instr x, wrap x. If instr y, wrap y
-	std::size_t found = pstr.find("x");
+	//std::size_t found = pstr.find("x");
 	if (pstr.find("x")!=std::string::npos) wrapx=true;
 	if (pstr.find("y")!=std::string::npos) wrapy=true;
 } 

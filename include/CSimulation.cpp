@@ -123,6 +123,7 @@ void CSimulation::Run()
 void CSimulation::DoStep()
 {
 	if (0==t%framedataInterval) std::cout << "t: " << t << std::endl;
+	
 	CalculateAndOutputFinishTime();
 	geom->PerStepUpdates();
 	
@@ -208,6 +209,7 @@ void CSimulation::OutputSimulationTimes()
 	std::cout << "DTtime: " << DTtime/(double)DTcount << " per iteration (" << DTcount << ")" << std::endl;
 	std::cout << "ftime: " << ftime/(double)fcount << " per iteration (" << fcount << ")"<< std::endl;
 	std::cout << "----------------" << std::endl;
+	std::cout << "All data written to " << jobnum << std::endl;
 }
 
 void CSimulation::CopyJobBatchFile()
@@ -286,9 +288,41 @@ void CSimulation::DelaunayTriangulation()
 	if (t%triangulationInterval!=0) return;
 	std::list<CParticle> tmp;
 	geom->AddParticlesForDT(tmp);
+	
+	std::list<CParticle> * trilist = geom->GetTriangulatedParticlesList();
+	trilist->clear();
+	
+	std::list<CParticle>::iterator it = trilist->end();
+	
+	trilist->insert(it,tmp.begin(),tmp.end());
+	
 	//std::cout << "num particles: " << tmp.size() << std::endl;
 	//return;
-	ComputationalGeometry::DelaunayTriangulation(tmp,geom->GetTriangulatedParticlesList(),geom->GetTriangulatedLinesList());	
+	
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// Temp code for testing the wrapping in the tube geomery
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+	/*if (t==285)
+	{
+		fout->AddFileStream("wraptest","wraptest.txt");
+		std::stringstream oss;
+		for (std::list<CParticle>::iterator p = tmp.begin();
+			p != tmp.end(); ++p)
+		{
+			oss << p->get_type() << " " << p->get_x() << " " << p->get_y() << std::endl;
+			
+		}
+		
+		
+		fout->RegisterOutput("wraptest", oss.str());
+	}*/
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	// End of Temp code for testing the wrapping in the tube geomery
+	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	
+	
+	//ComputationalGeometry::DelaunayTriangulation(tmp,geom->GetTriangulatedParticlesList(),geom->GetTriangulatedLinesList());	
 }
 
 double CSimulation::get_M2Average() { return integrator->GetM2Average(); }
