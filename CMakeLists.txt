@@ -58,7 +58,7 @@ include/IntegratorBase.cpp
 include/CParallelEulerIntegrator.cpp
 include/CParallelEulerFMAIntegrator.cpp
 include/GeometryBase.cpp
-#include/GeometryChannel.cpp
+include/GeometryChannel.cpp
 include/GeometryTube.cpp
 include/GeometryCustom.cpp
 include/rv_library.cpp

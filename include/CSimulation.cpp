@@ -22,7 +22,7 @@
 
 
 // GeometryBase Types
-//#include "GeometryChannel.hpp"
+#include "GeometryChannel.hpp"
 #include "GeometryTube.hpp"
 #include "GeometryCustom.hpp"   
 
@@ -251,7 +251,7 @@ GeometryBase * CSimulation::CreateGeometry()
     
     switch(geometry)
     {
-        //case 0:  return new GeometryChannel(this);            break;
+        case 0:  return new GeometryChannel(this);            break;
         case 1:  return new GeometryTube(this);   	          break;
         case 2:  return new GeometryCustom(this);             break;
         default:   throw std::runtime_error("CSimulation:CreateGeometry()  Bad character");
@@ -285,6 +285,7 @@ void CSimulation::AssignJobNumber()
 
 void CSimulation::DelaunayTriangulation()
 {
+	
 	if (t%triangulationInterval!=0) return;
 	std::list<CParticle> tmp;
 	geom->AddParticlesForDT(tmp);

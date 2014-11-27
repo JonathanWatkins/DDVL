@@ -2,21 +2,22 @@
 ;
 [Header]
 outputType=1
-geometry=2	
-simulationTime=1000
+geometry=0	
+simulationTime=10000
 temp=0.00
 lorentzForce=0.0
 
 [Geometry]
-sourceBfield=0.14
+sourceBfield=0.24
 sinkBfield=0.14
 bathLength=10
 bathWidth=8
 channelLength=60
 channelWidth=8
+periodicity=
 
 [InputData]
-altPosFile=true
+altPosFile=false
 altPosFileName=posdata.txt
 altPinsFile=false
 altPinsFileName=gs.txt
@@ -51,4 +52,4 @@ Phi=0.2067
 lambda=1.11
 
 [Job]
-jobtag=uxvsdb_tube
+jobtag=channel

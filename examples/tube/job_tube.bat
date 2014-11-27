@@ -3,13 +3,13 @@
 [Header]
 outputType=1
 geometry=1	
-simulationTime=1000
+simulationTime=10000
 temp=0.0001
 lorentzForce=0.0
 
 [Geometry]
 sourceBfield=0.25
-sinkBfield=0.24
+sinkBfield=0.14
 bathLength=10
 bathWidth=8
 channelLength=60

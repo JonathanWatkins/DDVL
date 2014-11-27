@@ -14,7 +14,6 @@
 #include "CDelLine.hpp"
 
 class CSimulation;
-class FileOutput;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //  class GeometryChannel
@@ -63,28 +62,20 @@ private:
 		void UpdateBathDensities();
 		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
 		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
-		
-		void WrapVorticesY(std::list<CParticle>& jList);
-		void DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
-		
+		void WrapVortices(std::list<CParticle>& iList);
 		void LoadBatchFile();
 		double CalcSinkB() const;
 		double CalcSourceB() const;	
 		void InitialiseRandomMobileParticles();
 		void InitialiseCEParticles();
 		void InitialiseParameters();
-		void InitialiseFiles();
 				 
     	// Analysis functions
 		void CalculateAndOutputAvVel();
 		void OutputFinalParticlePositions();
 		void OutputParticlePositions();
 		void OutputAverages();
-		void CalculateAndOutputNd();
-		
-		
-		
-				
+		void CalculateAndOutputNd();			
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables
@@ -122,26 +113,6 @@ private:
         double removebottomchannely;
         
 		double etchsourcex, etchsinkx;
-	
-		double etchsourcex0,  
-		etchsourcey0,
-		etchsourcex1, 
-		etchsourcey1;
-	
-		double etchsinkx0, 
-		etchsinky0,
-		etchsinkx1, 
-		etchsinky1;
-	
-		double etchchannelx0,
-		etchchannely0,
-		etchchannelx1,
-		etchchannely1;
-	
-		double removechannelx0,
-		removechannelx1,
-		removesourcey0,
-		removesourcey1;	
 			  
         double binsize;
         
@@ -153,11 +124,6 @@ private:
         int Nd;
 		int Nv;
 		int Nmis;
-		
-		FileOutput * fout;
-		
-		bool wrapx;
-		bool wrapy;
               
 };
 
