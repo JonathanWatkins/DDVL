@@ -1,4 +1,7 @@
-PROJECT(test NONE)
+  set(CMAKE_CXX_COMPILER "icc")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++11" )
+
+#PROJECT(test NONE)
 
 # - Main CMake script for DDVL
 #
@@ -6,25 +9,24 @@ PROJECT(test NONE)
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 
 # - Use the intel icl compiler
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=LINUX)
-	set(CMAKE_CXX_COMPILER "icc")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++11" )
+#IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+#	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=LINUX)
+#	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++11" )
 #	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11" )
-ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}="Darwin")
-        set(CMAKE_CXX_COMPILER "icc")
-        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++11" )
-ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=NOTLINUX)
-	set(CMAKE_CXX_COMPILER "icl")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /O2 " )
-  	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")	
-	add_definitions(-D__WINDOWS__)
-	add_definitions(-DTRILIBRARY)
-	add_definitions(-DANSI_DECLARATORS)
+#ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#        MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}="Darwin")
+#        set(CMAKE_CXX_COMPILER "icc")
+#        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -std=c++11" )
+#ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+#	MESSAGE(STATUS ${CMAKE_SYSTEM_NAME}=NOTLINUX)
+#	set(CMAKE_CXX_COMPILER "icl")
+#	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /O2 " )
+#  	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")	
+#	add_definitions(-D__WINDOWS__)
+#	add_definitions(-DTRILIBRARY)
+#	add_definitions(-DANSI_DECLARATORS)
 
-ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+#ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 
 PROJECT(DDVL CXX)

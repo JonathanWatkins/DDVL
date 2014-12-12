@@ -10,13 +10,6 @@
 
 #include "rv_library.hpp"
 
-// Wrapper for legacy support in FMA integrator
-
-double RandomVariableStatisticalFunctions::GetNormalVariate()
-{
-    return MT_rand_N();
-}
-
 // Implements the Mersenne Twister algorithm or U(0,1)
 
 double RandomVariableStatisticalFunctions::MT_rand_U()
