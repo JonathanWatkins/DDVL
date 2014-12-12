@@ -58,6 +58,11 @@ CParticle::CParticle()
 	Tracked=false;
 	in_bubble=false;
 	burgers_circuit_center=false;
+	N=0;
+
+	velx_sum=0;
+	vely_sum=0;
+	
 	//numTrajPoints=0;
 	//trajectoryx = new std::vector<double>;
 	//trajectoryy = new std::vector<double>;
@@ -134,20 +139,27 @@ void CParticle::set_lastpos(double lastx_, double lasty_)
 }
 	
 	
-void CParticle::set_velx(double velx_)
+/*void CParticle::set_velx(double velx_)
 {
 	velx=velx_;
+	velx_sum+=velx;
+    N++;
 }
 	
 void CParticle::set_vely(double vely_)
 {
 	vely=vely_;
-}
+	vely_sum+=vely;
+
+}*/
 	
 void CParticle::set_vel(double velx_, double vely_)
 {
 	velx=velx_;
 	vely=vely_;
+	velx_sum+=velx;
+	vely_sum+=vely;
+    N++;
 	
 }
 
@@ -252,6 +264,18 @@ bool CParticle::get_in_bubble() const
 void CParticle::coordPlusOne()
 {
 	coord_num++;
+}
+
+double CParticle::get_velx_mean()
+{
+    return N==0 ? 0 : velx_sum/N;
+
+}
+
+double CParticle::get_vely_mean()
+{
+    return N==0 ? 0 : vely_sum/N;
+	
 }
 
 /*void CParticle::add_trajectoryPoint()

@@ -13,7 +13,13 @@ private:
 	int coord_num;
 	bool ghost, Tracked, in_bubble, burgers_circuit_center;
 	int id;
-  double Jxy,Jyx,Jxx,Jyy;
+	int N;
+  	double Jxy,Jyx,Jxx,Jyy;
+
+  	double velx_sum;
+	double vely_sum;
+
+
   
   double force_dx, force_dy;
   double force_tx, force_ty;
@@ -86,6 +92,7 @@ public:
 		in_bubble=lhs_.in_bubble;
 		burgers_circuit_center=lhs_.burgers_circuit_center;
 		type=lhs_.type;
+		N = lhs_.N;
 		
 		
 	}
@@ -123,9 +130,9 @@ public:
 	
 	void set_lastpos(double lastx_, double lasty_);
 	
-	void set_velx(double velx_);
+	/*void set_velx(double velx_);
 	
-	void set_vely(double vely_);
+	void set_vely(double vely_);*/
 	
 	void set_vel(double velx_, double vely_);
 	
@@ -185,6 +192,9 @@ public:
 	
 	char get_type() const { return type; }
 
+	double get_velx_mean();
+
+	double get_vely_mean();
 		
 	//void add_trajectoryPoint();
 	

@@ -630,15 +630,15 @@ void GeometryCustom::OutputParticlePositions()
 						 << p->get_ghost() << ", "
 						 << p->get_x() << ", " 
 						 << p->get_y() << ", " 
-						 << p->get_velx() << ", "
-						 << p->get_vely() << ", "
+						 << p->get_velx_mean() << ", "
+						 << p->get_vely_mean() << ", "
 						 << p->get_coord_num()
 						 << "}";											
 
 			
 	}
 	
-	std::cout << activeParticleCount << std::endl;
+	//std::cout << activeParticleCount << std::endl;
 	
 	/*for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
 			p != OtherParticlesList->end(); ++p)
@@ -750,7 +750,7 @@ void GeometryCustom::OutputParticleCount()
 	{
 		if (p->get_y() > 10)
 		{	
-			p->set_velx(0.006);
+			p->set_vel(0.001, p->get_vely());
 			p->set_x(p->get_x()+p->get_velx()*dt);
 			
 		}
