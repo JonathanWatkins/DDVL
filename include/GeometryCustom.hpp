@@ -114,7 +114,10 @@ private:
         double xlo,ylo, xhi,yhi;
         
         FileOutput * fout;
-               
+    
+        // temp variables for sheared wall jobs
+        double topwallvel;
+    
 };
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

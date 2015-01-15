@@ -52,6 +52,8 @@ GeometryCustom::GeometryCustom(CSimulation * sim_)
     wrapx=false;
     wrapy=false;
     
+    topwallvel=0;
+    
         
 }
 
@@ -85,7 +87,10 @@ void GeometryCustom::LoadBatchFile()
 			sim->ReadVariableFromBatchFile(pos_file_name, "InputData.altPosFileName");
 	
 	}
-		
+	
+    //
+    sim->ReadVariableFromBatchFile(topwallvel,"Wall.topwallvel");
+    
 	std::cout << "   Job Header loaded.\n\n";
 	
 	
@@ -750,7 +755,7 @@ void GeometryCustom::OutputParticleCount()
 	{
 		if (p->get_y() > 10)
 		{	
-			p->set_vel(0.001, p->get_vely());
+			p->set_vel(topwallvel, p->get_vely());
 			p->set_x(p->get_x()+p->get_velx()*dt);
 			
 		}
