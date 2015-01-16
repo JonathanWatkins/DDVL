@@ -635,8 +635,8 @@ void GeometryCustom::OutputParticlePositions()
 						 << p->get_ghost() << ", "
 						 << p->get_x() << ", " 
 						 << p->get_y() << ", " 
-						 << p->get_velx_mean() << ", "
-						 << p->get_vely_mean() << ", "
+						 << p->get_velx() << ", "
+						 << p->get_vely() << ", "
 						 << p->get_coord_num()
 						 << "}";											
 
