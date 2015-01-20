@@ -65,6 +65,7 @@ include/GeometryTube.cpp
 include/GeometryCustom.cpp
 include/rv_library.cpp
 include/thermostats.cpp
+include/BinnedAccumulator.cpp
 )
 
 add_library(DTlib

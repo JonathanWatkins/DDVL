@@ -158,7 +158,7 @@ private:
 		
 		bool wrapx;
 		bool wrapy;
-              
+		              
 };
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

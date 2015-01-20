@@ -17,6 +17,7 @@
 #include "CSimulation.hpp"
 #include "CParticle.hpp"
 #include "FileOutput.hpp"
+#include "BinnedAccumulator.hpp"
 
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -63,6 +64,8 @@ GeometryCustom::~GeometryCustom()
     delete triangulatedLinesList;
     delete AParticlesList;
     delete OtherParticlesList;
+	
+	delete Vxofy;
     	
 }
 
@@ -121,6 +124,8 @@ void GeometryCustom::InitialiseParameters()
 	
 	delx = xhi - xlo;		   
 	dely = yhi - ylo;
+	
+	Vxofy = new BinnedAccumulator(ylo,yhi,binsize);
 	
 	std::cout << "Custom geometry selected." << std::endl;
 	
@@ -352,12 +357,14 @@ void GeometryCustom::PerStepAnalysis()
 {
 	  OutputParticlePositions(); 
 	  //OutputParticleCount();
+	  CalculateVxofyProfile();
 }
 
 void GeometryCustom::EndofSimAnalysis()
 {
 	OutputFinalParticlePositions();
 	OutputAverages();
+	OutputVxofyProfile();
 
 }
 
@@ -775,8 +782,34 @@ void GeometryCustom::InitialiseFiles()
 	fout->AddFileStream("framevel", "framevel.txt");
 	fout->AddFileStream("Nd", "Nd.txt");
 	fout->AddFileStream("avfile", "averagesdata.txt");
+	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
  
  }
+ 
+void GeometryCustom::CalculateVxofyProfile()
+{
+ 	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+ 			p != triangulatedParticlesList->end(); ++p)
+ 	{
+ 		if (p->get_ghost()==true) continue;		
+ 		
+ 		
+ 		double x = p->get_y(); 
+ 		double f = p->get_velx();
+		Vxofy->AddValue(x,f);
+			
+ 	}
+	
+	
+}
+
+
+void GeometryCustom::OutputVxofyProfile()
+{
+	std::stringstream oss;
+	Vxofy->GetBinnedAverages(oss);
+	fout->RegisterOutput("Vxofy",oss.str());
+}
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end

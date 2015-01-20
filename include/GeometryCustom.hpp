@@ -13,8 +13,10 @@
 #include "CParticle.hpp"
 #include "CDelLine.hpp"
 
+
 class CSimulation;
 class FileOutput;
+class BinnedAccumulator;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //  class GeometryCustom
@@ -81,6 +83,9 @@ private:
 		void OutputParticlePositions();
 		void OutputAverages();
 		void OutputParticleCount();
+		void OutputVxofyProfile();
+		void CalculateVxofyProfile();
+		
 		
 		// User Defined functions
 		void MoveTopCE();
@@ -114,7 +119,9 @@ private:
         double xlo,ylo, xhi,yhi;
         
         FileOutput * fout;
-    
+		
+		BinnedAccumulator * Vxofy;
+		
         // temp variables for sheared wall jobs
         double topwallvel;
     
