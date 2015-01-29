@@ -7,11 +7,14 @@
 #include <stdexcept>
 #include <boost/exception/all.hpp>
 #include <boost/throw_exception.hpp>
+#include <chrono>
+#include <ratio>
 
 int main(int argc, char *argv[])
 {		
    	try
 	{
+		std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
     	CSimulation sim;
 		
 		// initialise from jobHeader file
@@ -38,7 +41,12 @@ int main(int argc, char *argv[])
 			
 			
 		sim.Run();	
-			
+		
+		std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+ 
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+
+		std::cout << "It took me " << time_span.count() << " seconds.";
 		
 	}
 	catch (const boost::property_tree::file_parser_error &e)

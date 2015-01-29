@@ -22,7 +22,7 @@ class CCell
 	
 	std::list<CParticle> * get_cellList();
 	
-	void add_particle(CParticle vortex_);
+	void add_particle(CParticle & vortex_);
 	
 	void list_particles();
 	

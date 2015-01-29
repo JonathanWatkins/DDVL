@@ -192,7 +192,7 @@ void CParallelEulerIntegrator::Integrate()
 	}
 	
 	// check for duplicate positions
-	CheckDuplicatePositions(cll);
+	//CheckDuplicatePositions(cll);
 	
 	// updates vortices list
 	vorticesList->clear();
@@ -246,18 +246,17 @@ void CParallelEulerIntegrator::Integrate()
 
 double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_)
 {
-	double force=0;
-	double lambda = integrator_->GetLambda();
-	double rcut = integrator_->GetForceRange();
+	static double lambda = integrator_->GetLambda();
+	static double rcut = integrator_->GetForceRange();
 	
-	if (dist_==0)
-	{
-		std::cout << "zero" << std::endl;
-		force=0.0000000001*fabs(rv::MT_rand_N());
-	}
-	else
-	{
-		force = boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
+	//if (dist_==0)
+	//{
+	//	std::cout << "zero" << std::endl;
+	//	force=0.0000000001*fabs(rv::MT_rand_N());
+	//}
+	//else
+	//{
+	return  boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
 		
 		//double io=0;
 		//double ipo=0;
@@ -265,9 +264,8 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_
 		//rv::bessik(dist_/lambda, 1, io, force, ipo, kpo);
 		
 		//force = 1.0/dist_ + dist_*dist_*dist_/rcut/rcut/rcut/rcut - 2*dist_/rcut/rcut;
-	}
+	//}
 	
-	return force;
 }
 
 /*double GaussianForce(const double & dist_, const bool & inbath_, CSimulation *sim_)
@@ -351,6 +349,8 @@ void CParallelEulerIntegrator::vvInteration(
 {
 	double forceSum[2]={0,0};
 	
+	static double forceRangesq = forceRange*forceRange;
+	
 	for(std::list<CParticle>::iterator q = cell_.begin();
 									q != cell_.end(); ++q)
 	{
@@ -358,6 +358,7 @@ void CParallelEulerIntegrator::vvInteration(
 		// do not check interaction between particle and itself
 		if (q->get_id()==p_->get_id())
 				continue;
+		
 		double pxqx = p_->get_x()-q->get_x();
 		double pyqy = p_->get_y()-q->get_y();
 		 
@@ -365,16 +366,18 @@ void CParallelEulerIntegrator::vvInteration(
 		// rvector is the direction from q to p
 		// r hat is the unit vector pointing from q to p
 		
-		double r= sqrt( pxqx*pxqx + pyqy*pyqy );
+		double rsq = pxqx*pxqx + pyqy*pyqy;
 		
 		// check r is a valid number
-		if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
+		//if (r!=r) throw std::runtime_error ("calculateForces() r is nan"); 
 		
-		if (boost::math::isinf(r)) throw std::runtime_error ("calculateForces() r is inf");
+		//if (boost::math::isinf(r)) throw std::runtime_error ("calculateForces() r is inf");
 
 		//only include vortices closer than the forceRange cutoff								
-		if (r > forceRange)
+		if (rsq > forceRangesq)
 				continue;
+		
+		double r= sqrt( rsq );
 		
 		// calculate rhat
 		double rvector[2]={pxqx,pyqy};
@@ -386,6 +389,7 @@ void CParallelEulerIntegrator::vvInteration(
 		
 		
 		double f=func_(r,this);
+		//double f = 0;
 		//forceForm(r,inbath_);
 		
 		forceSum[0]=forceSum[0]+f*rhat[0];

@@ -6,7 +6,7 @@ std::list<CParticle> * CCell::get_cellList()
 	return &cellList;
 }
 
-void CCell::add_particle(CParticle vortex_)
+void CCell::add_particle(CParticle & vortex_)
 {
 	cellList.push_back(vortex_);
 	
