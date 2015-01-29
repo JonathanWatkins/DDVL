@@ -53,8 +53,8 @@ GeometryCustom::GeometryCustom(CSimulation * sim_)
     wrapx=false;
     wrapy=false;
     
-    topwallvel=0;
-    
+    omega=0;
+	Amp=0;
         
 }
 
@@ -80,6 +80,8 @@ void GeometryCustom::LoadBatchFile()
 	sim->ReadVariableFromBatchFile(Phi, "Interactions.Phi");
 	sim->ReadVariableFromBatchFile(forcerange, "GeneralParameters.forceRange");
 	sim->ReadVariableFromBatchFile(dt, "GeneralParameters.dt");
+
+	
 	
 	// analysis variables
 	sim->ReadVariableFromBatchFile(binsize, "GeneralParameters.binSize");
@@ -92,8 +94,10 @@ void GeometryCustom::LoadBatchFile()
 	}
 	
     //
-    sim->ReadVariableFromBatchFile(topwallvel,"Wall.topwallvel");
+    sim->ReadVariableFromBatchFile(Amp,"Wall.Amp");
+    sim->ReadVariableFromBatchFile(omega,"Wall.omega");
     
+	
 	std::cout << "   Job Header loaded.\n\n";
 	
 	
@@ -750,27 +754,42 @@ void GeometryCustom::OutputParticleCount()
  void GeometryCustom::UserUpdates()
  {
 	 // Add functions here to be run every timestep
-	 MoveTopCE();
+	 OscillateTopCE();
  }
  
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
+//
+//  OscillateTopCE()
+//
+//   V = V0 * Cos(omega * t)
+//   x = x0 + V0/omega*Sin(omega*t)
+//   x0 = 0
+//   --> x = V0/omega*Sin(omega*t)
+//   
+//   xmax = V0/omega  --> if max amplitude = a0/4, V0 = 0.006 and a0 = 1
+//   --> omega = V0/amp
+//   phase space ->  amp = a0/10  to a0/4
+//                   omega = 0.004  to 0.06
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
  
- void GeometryCustom::MoveTopCE()
- {
-	double dt = sim->get_dt();
+void GeometryCustom::OscillateTopCE()
+{
+	double t = sim->get_time();
+	
+	static double V0 = omega*Amp;
+	
 	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
 		p!=OtherParticlesList->end(); ++p)
 	{
 		if (p->get_y() > 10)
 		{	
-			p->set_vel(topwallvel, p->get_vely());
-			p->set_x(p->get_x()+p->get_velx()*dt);
-			
-		}
-		
+			p->set_vel(V0*cos(2*pi*omega*t), p->get_vely());
+			p->set_x(p->get_x()+p->get_velx()*dt);	
+		}	
 	}
+} 
 
-	 
- } 
+ 
  
  
 void GeometryCustom::InitialiseFiles()
@@ -783,20 +802,50 @@ void GeometryCustom::InitialiseFiles()
 	fout->AddFileStream("Nd", "Nd.txt");
 	fout->AddFileStream("avfile", "averagesdata.txt");
 	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
+	fout->AddFileStream("periods","periods.txt");
  
  }
  
 void GeometryCustom::CalculateVxofyProfile()
 {
- 	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+	int t = sim->get_t();
+	
+	static int numslices = 10;
+	static double period_timesteps = 2*pi/omega/dt;
+	static double slice_timesteps = period_timesteps/numslices;
+	
+	static bool FIRSTTIME = true;
+	
+	std::stringstream oss;
+	
+	if (FIRSTTIME==true)
+	{
+		FIRSTTIME=false;
+		oss << "period_timesteps  slice_timesteps" << std::endl;
+		oss << period_timesteps << " " << slice_timesteps << std::endl;
+		fout->RegisterOutput("periods",oss.str());
+		oss.str("");
+	}
+	
+		
+	//std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+	int sliceindex = (t % int(period_timesteps))/slice_timesteps;
+	//std::cout << sliceindex << std::endl;
+	oss << "t: " << t << " " << sliceindex << std::endl;
+	fout->RegisterOutput("periods",oss.str());
+    
+		
+	if (sliceindex!=1) return;
+ 	std::cout << "out";
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
  			p != triangulatedParticlesList->end(); ++p)
  	{
  		if (p->get_ghost()==true) continue;		
  		
  		
- 		double x = p->get_y(); 
+ 		double y = p->get_y(); 
  		double f = p->get_velx();
-		Vxofy->AddValue(x,f);
+		Vxofy->AddValue(y,f);
 			
  	}
 	
