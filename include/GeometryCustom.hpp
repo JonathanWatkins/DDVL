@@ -87,8 +87,9 @@ private:
 		void CalculateVxofyProfile();
 		
 		
-		// User Defined functions
-		void MoveTopCE();
+		// User Defined Update functions
+		void OscillateTopCE();
+		
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables
@@ -123,7 +124,15 @@ private:
 		BinnedAccumulator * Vxofy;
 		
         // temp variables for sheared wall jobs
-        double topwallvel;
+        double Amp;
+		double omega;
+		
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// class specific constants
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX			
+		
+		const double pi = 3.14159265358979;
+
     
 };
 
