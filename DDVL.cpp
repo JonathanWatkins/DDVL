@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
  
 		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 
-		std::cout << "It took me " << time_span.count() << " seconds.";
+		std::cout << "It took me " << time_span.count() << " seconds." << std::endl;
 		
 	}
 	catch (const boost::property_tree::file_parser_error &e)
