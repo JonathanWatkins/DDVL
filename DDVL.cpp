@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		std::cout << "It took me " << time_span.count() << " seconds." << std::endl;
 		
 	}
-	catch (const boost::property_tree::file_parser_error &e)
+	catch (boost::property_tree::file_parser_error &e)
     {   
 		std::cout 	<< "A boost runtime error was caught by main\n"
 					<< e.what() << std::endl
