@@ -192,7 +192,7 @@ void CParallelEulerIntegrator::Integrate()
 	}
 	
 	// check for duplicate positions
-	CheckDuplicatePositions(cll);
+	//CheckDuplicatePositions(cll);
 	
 	// updates vortices list
 	vorticesList->clear();
