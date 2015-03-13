@@ -45,6 +45,7 @@ ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIR})
+message(status ${Boost_INCLUDE_DIR})
 
 # - Tell compiler where to find headers
 include_directories(

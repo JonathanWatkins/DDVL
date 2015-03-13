@@ -52,7 +52,7 @@ void CParallelEulerIntegrator::Initialise()
 	sim->ReadVariableFromBatchFile(lorentzForce, "Header.lorentzForce");  
 	applyMaxVelocities=false;
 	a0=sim->Geta0();
-	
+	oneoverlambda=1/lambda;
 	// cell-linked lists on heap
 	
 	cll = new CCell*[MAXLINKEDLISTSIZE];
@@ -65,6 +65,21 @@ void CParallelEulerIntegrator::Initialise()
 		
 	}
 	
+	
+	// initialise force
+	
+	step = 0.0001;
+	olambda = 1/1.11;
+	rmax = 6.66;
+	for (long i = 1; i<=int(6.66/step)+1; ++i)
+	{
+		double r = step*i;
+	    double f = boost::math::cyl_bessel_k(1,  r*olambda);
+            
+	    pot_table.push_back(f);
+    }    
+    
+	fmax = 0;
 
 	
 	
@@ -104,7 +119,7 @@ void CParallelEulerIntegrator::Integrate()
 	//std::cout << "lastvorticesList.size(): " << lastvorticesList.size() << std::endl;
 	// divide the vorticesList and lastvorticesList into cells
 	
-	CreateCellLinkedLists(cll, vorticesList);
+	//CreateCellLinkedLists(cll, vorticesList);
 	
 	CreateCellLinkedLists(lastcll, &lastvorticesList);
 		
@@ -112,83 +127,83 @@ void CParallelEulerIntegrator::Integrate()
 	// loop over all cll comparing with lastcll and cllp lists
 	
 	
-	cilk_for(int i = 1; i < MAXLINKEDLISTSIZE-1; ++i)
+	// make vorticesVector
+	std::vector<CParticle> vorticesVector;
+	std::vector<CParticle>::iterator it = vorticesVector.end();
+	vorticesVector.insert(it,vorticesList->begin(),vorticesList->end());
+	
+	
+	cilk_for (long ii = 0; ii != vorticesVector.size(); ++ii)
 	{
-		for(int j = 1; j < MAXLINKEDLISTSIZE-1; ++j)
+		
+		CParticle * p = &vorticesVector[ii];
+		
+		long i = what_icell(p);
+		long j = what_jcell(p);
+					
+		// initialise forces to be zero
+		double force[2]={0,0};
+		double vortexForce[2]={0,0};
+		double pinsForce[2]={0,0};
+		double disorderForce[2]={0,0};
+		double tempForce[2]={0,0};
+		
+		// calculate forces due to temperature kick 
+		thermostats::Andersen(temp, kB, eta, dt, tau, tempForce);
+		
+		// is the vortex in the bath (so will need stiff lattice adjustment
+							
+		// check interation between particles
+		// in this and neighbouring cells
+		for(int k = i-1; k<=i+1;k++)
 		{
-				//if ((*cll[i][j].get_cellList()).size()!=0)
-				//		std::cout << (*cll[i][j].get_cellList()).size() <<std::endl;
-			
-				for(std::list<CParticle>::iterator p = (*cll[i][j].get_cellList()).begin();
-									p != (*cll[i][j].get_cellList()).end(); ++p)
-				{
-					
-					// initialise forces to be zero
-					double force[2]={0,0};
-					double vortexForce[2]={0,0};
-					double pinsForce[2]={0,0};
-					double disorderForce[2]={0,0};
-					double tempForce[2]={0,0};
-					
-					// calculate forces due to temperature kick 
-					thermostats::Andersen(temp, kB, eta, dt, tau, tempForce);
-					
-					// is the vortex in the bath (so will need stiff lattice adjustment
-										
-					// check interation between particles
-					// in this and neighbouring cells
-					for(int k = i-1; k<=i+1;k++)
-					{
-						for(int l = j-1; l<=j+1;l++)
-						{
-							vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,BesselsForce);
-																										
-						}
-					}
-					
-					// set raw velocity
-					
-					
-					
-					double forcep_dx = vortexForce[0]+lorentzForce;
-					double forcep_dy = vortexForce[1];
-					
-					double forcep_tx = tempForce[0];
-					double forcep_ty = tempForce[1];
-					
-					//*fileOutputter.getFS("forceterms") << forcep_dx << " " << forcep_dy << " " << forcep_tx << " " << forcep_ty << std::endl;
-					
-					
-					p->set_force_d_t(forcep_dx, forcep_dy, forcep_tx, forcep_ty);
-										
-					double velx=(forcep_dx + forcep_tx)/eta;
-					double vely=(forcep_dy + forcep_ty)/eta;
-					
-					// Apply simulation adjustments to velocity
-										
-					ApplyMaxVelocities(p,velx,vely);
-					
-					// set velocity then check if valid
-					
-					p->set_vel(velx,vely);
-					
-					CheckDouble(p->get_velx(),"velx","calculateForces()");
-					CheckDouble(p->get_vely(),"vely","calculateForces()");
-					
-					// set last position
-					p->set_lastpos(p->get_x(),p->get_y());
-					
-					// set new position then check if valid
-					p->set_pos(p->get_x()+p->get_velx()*dt,p->get_y()+p->get_vely()*dt);
-					
-					CheckDouble(p->get_x(),"x","calculateForces()");
-					CheckDouble(p->get_y(),"y","calculateForces()"); 
+			for(int l = j-1; l<=j+1;l++)
+			{
+				vvInteration(p,(*lastcll[k][l].get_cellList()),vortexForce,BesselsForce);
+																							
+			}
+		}
+		
+		// set raw velocity
+		
+		
+		
+		double forcep_dx = vortexForce[0]+lorentzForce;
+		double forcep_dy = vortexForce[1];
+		
+		double forcep_tx = tempForce[0];
+		double forcep_ty = tempForce[1];
+		
+		//*fileOutputter.getFS("forceterms") << forcep_dx << " " << forcep_dy << " " << forcep_tx << " " << forcep_ty << std::endl;
+		//std::cout << forcep_dx << "  " << std::endl;
+		
+		p->set_force_d_t(forcep_dx, forcep_dy, forcep_tx, forcep_ty);
+							
+		double velx=(forcep_dx + forcep_tx)/eta;
+		double vely=(forcep_dy + forcep_ty)/eta;
+		
+		// Apply simulation adjustments to velocity
+							
+		ApplyMaxVelocities(p,velx,vely);
+		
+		// set velocity then check if valid
+		
+		p->set_vel(velx,vely);
+		
+		CheckDouble(p->get_velx(),"velx","calculateForces()");
+		CheckDouble(p->get_vely(),"vely","calculateForces()");
+		
+		// set last position
+		p->set_lastpos(p->get_x(),p->get_y());
+		
+		// set new position then check if valid
+		p->set_pos(p->get_x()+p->get_velx()*dt,p->get_y()+p->get_vely()*dt);
+		
+		CheckDouble(p->get_x(),"x","calculateForces()");
+		CheckDouble(p->get_y(),"y","calculateForces()"); 
 												
 					
-				}
-			
-			
-		}
+	
 	}
 	
 	// check for duplicate positions
@@ -196,7 +211,11 @@ void CParallelEulerIntegrator::Integrate()
 	
 	// updates vortices list
 	vorticesList->clear();
-	CellLinkedListToList(cll,vorticesList);
+	
+	std::list<CParticle>::iterator itv = vorticesList->end();
+	vorticesList->insert(itv,vorticesVector.begin(),vorticesVector.end());
+	
+	//CellLinkedListToList(cll,vorticesList);
 	
 	ClearLinkedLists();
 	
@@ -246,8 +265,8 @@ void CParallelEulerIntegrator::Integrate()
 
 double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_)
 {
-	static double lambda = integrator_->GetLambda();
-	static double rcut = integrator_->GetForceRange();
+	//static double lambda = integrator_->GetLambda();
+	//static double rcut = integrator_->GetForceRange();
 	
 	//if (dist_==0)
 	//{
@@ -256,7 +275,8 @@ double BesselsForce(const double & dist_, CParallelEulerIntegrator * integrator_
 	//}
 	//else
 	//{
-	return  boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
+	return 0;
+	//return  boost::math::cyl_bessel_k(1,  dist_/lambda);//lambda3;// - boost::math::cyl_bessel_k(1,  rcut/thislambda)/lambda3;
 		
 		//double io=0;
 		//double ipo=0;
@@ -340,27 +360,49 @@ void CParallelEulerIntegrator::CopyCellLinkedList( CCell ** cllsource_, CCell **
 //
 //*************************************************************************************************************
 
+inline float lerp(float a, float b, float f)
+{
+    return a + f * (b - a);
+}
+
+
 void CParallelEulerIntegrator::vvInteration(
-		std::list<CParticle>::iterator p_,
+		CParticle * p_,
 		std::list<CParticle> & cell_,  
 		double (&force_)[2],
 		boost::function<double (double, CParallelEulerIntegrator *)> func_
 		)
 {
+	
 	double forceSum[2]={0,0};
 	
 	static double forceRangesq = forceRange*forceRange;
+	
+	
+	double px = p_->get_x();
+	double py = p_->get_y();
+	/*double pxqx = 0;
+	double pyqy = 0;
+	double rsq = 0;
+	double r = 0;
+	double f = 0;
+	
+	double oneoverr=0;
+	*/
+	
+    double rcut = 3.33;
+    double orcutsq = 1/rcut/rcut;
 	
 	for(std::list<CParticle>::iterator q = cell_.begin();
 									q != cell_.end(); ++q)
 	{
 		
 		// do not check interaction between particle and itself
-		if (q->get_id()==p_->get_id())
-				continue;
+		//if (q->get_id()==pid)
+		//		continue;
 		
-		double pxqx = p_->get_x()-q->get_x();
-		double pyqy = p_->get_y()-q->get_y();
+		double pxqx = px-q->get_x();
+		double pyqy = py-q->get_y();
 		 
 		// r is the distance between points
 		// rvector is the direction from q to p
@@ -378,27 +420,46 @@ void CParallelEulerIntegrator::vvInteration(
 				continue;
 		
 		double r= sqrt( rsq );
+		double oneoverr=1/r;
 		
 		// calculate rhat
-		double rvector[2]={pxqx,pyqy};
 		
 		if (r==0)
 			continue;
 			
-		double rhat[2] ={rvector[0]/r,rvector[1]/r};
+		double rhat[2] ={pxqx*oneoverr,pyqy*oneoverr};
+		
+	
+		//f=func_(r,this);
+		//double f = boost::math::cyl_bessel_k(1,  r*oneoverlambda);
 		
 		
-		double f=func_(r,this);
-		//double f = 0;
+		double f;
+		if (r < step) f = pot_table[0];
+		else if (r > rmax) f = 0.0;
+		else
+		{
+			int pot_lindex=static_cast<int>(floor(r/step))-1;
+		    f = lerp(pot_table[pot_lindex],pot_table[pot_lindex+1],r-(pot_lindex+1)*step);
+                
+		}
+		
+		
+		
+		//f = 1/r;
 		//forceForm(r,inbath_);
+		//double rsqorcut = r*r*orcutsq;
+            
+		//double f = 1.0/r+rsqorcut*rsqorcut/r-2.0*rsqorcut/r;
 		
-		forceSum[0]=forceSum[0]+f*rhat[0];
-		forceSum[1]=forceSum[1]+f*rhat[1];
+		
+		forceSum[0]+=f*rhat[0];
+		forceSum[1]+=f*rhat[1];
 						
 	}
 	
-	force_[0]=force_[0]+forceSum[0];
-	force_[1]=force_[1]+forceSum[1];
+	force_[0]+=forceSum[0];
+	force_[1]+=forceSum[1];
 	
 	
 	
@@ -502,6 +563,50 @@ int CParallelEulerIntegrator::what_jcell(std::list<CParticle>::iterator a_) cons
 
 }
 
+int CParallelEulerIntegrator::what_icell(CParticle * a_) const
+{
+	double i= floor((a_->get_x()-sim->get_xlo()+2*cellSize)/cellSize);
+	//std::cout << i << std::endl;
+	if (i!=i)
+	{
+		std::stringstream oss;
+		oss << "what_icell(): i is undefined p->get_x()= " << a_->get_x();
+		throw std::runtime_error(oss.str());
+	}
+	if (i<0)
+	{
+		std::stringstream oss;
+		oss << "what_icell(): (i<0) particle outside link list grid (" << a_->get_x() << ", " << a_->get_y() << ")" << std::endl; 
+		throw std::runtime_error(oss.str());
+	}
+	if (i>MAXLINKEDLISTSIZE-1)
+	{
+		std::stringstream oss;
+		oss << "what_icell(): (i>MAXLINKEDLISTSIZE-1) particle outside link list grid (" << a_->get_x() << ", " << a_->get_y() << ")" << std::endl; 
+		throw std::runtime_error(oss.str());
+	}
+	
+	else return i;
+
+}
+
+int CParallelEulerIntegrator::what_jcell(CParticle *a_) const
+{
+	double j= floor((a_->get_y()-sim->get_ylo()+2*cellSize)/cellSize);
+	if (j!=j)
+	{
+		std::stringstream oss;
+		oss << "what_icell(): j is undefined p->get_x()= " << a_->get_x();
+		throw std::runtime_error(oss.str());
+	}
+	if (j<0) throw std::runtime_error("what_jcell(): (j<0) particle outside link list grid");
+	
+	if (j>MAXLINKEDLISTSIZE-1) throw std::runtime_error("what_jcell(): (j>MAXLINKEDLISTSIZE-1) particle outside link list grid");
+	
+	else return j;
+
+}
+
 //*************************************************************************************************************
 // 
 // Apply Max Velocities
@@ -510,7 +615,7 @@ int CParallelEulerIntegrator::what_jcell(std::list<CParticle>::iterator a_) cons
 //
 //*************************************************************************************************************
 
-void CParallelEulerIntegrator::ApplyMaxVelocities(std::list<CParticle>::iterator p_, double &velx_, double & vely_)
+void CParallelEulerIntegrator::ApplyMaxVelocities(CParticle * p_, double &velx_, double & vely_)
 {		
 			if (applyMaxVelocities==false)
 				return;

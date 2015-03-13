@@ -41,7 +41,7 @@ class GeometryCustom : public GeometryBase
 		void AddParticlesForDT(std::list<CParticle> & vorticesList_);  // returns particles to be triangulated
 		std::list<CParticle> * GetIParticles();  // returns particles to be integrated
 		void GetJParticles(std::list<CParticle>& vorticesList_);  // returns particles seen by integrated particles
-		 
+ 
 				
 		double GetXLo() const { return xlo; }
 		double GetXHi() const { return xhi; }
