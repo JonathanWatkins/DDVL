@@ -130,8 +130,8 @@ private:
 	bool paused;
 	CVersion version;
 	int simulation_time;
-	int MonitorPeriod;
-	int lasttime;
+	//int MonitorPeriod;
+	std::chrono::steady_clock::time_point lasttime;
 	int seedtime;
 	double startTime;
 	double endTime;
