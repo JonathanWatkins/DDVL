@@ -136,6 +136,8 @@ void FileOutput::RegisterOutput(const std::string & streamName_, const std::stri
 	int fileid=GetFS(streamName_);
 	
 	newFile[fileid] << text;
+	newFile[fileid].flush();
+	
 	
 	
 }

@@ -358,6 +358,7 @@ void GeometryCustom::PerStepAnalysis()
 	  OutputParticlePositions(); 
 	  //OutputParticleCount();
 	  CalculateVxofyProfile();
+	  OutputVxofyEvolveProfile();
 }
 
 void GeometryCustom::EndofSimAnalysis()
@@ -779,10 +780,11 @@ void GeometryCustom::InitialiseFiles()
 		
 	fout->AddFileStream("posfile", "posdata.txt");
 	fout->AddFileStream("guifile", "guidata.dat");
-	fout->AddFileStream("framevel", "framevel.txt");
-	fout->AddFileStream("Nd", "Nd.txt");
+	//fout->AddFileStream("framevel", "framevel.txt");
+	//fout->AddFileStream("Nd", "Nd.txt");
 	fout->AddFileStream("avfile", "averagesdata.txt");
 	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
+	fout->AddFileStream("Vxofy_evolve","Vxofyprofile_evolve.txt");
  
  }
  
@@ -804,12 +806,29 @@ void GeometryCustom::CalculateVxofyProfile()
 }
 
 
+
 void GeometryCustom::OutputVxofyProfile()
 {
 	std::stringstream oss;
 	Vxofy->GetBinnedAverages(oss);
 	fout->RegisterOutput("Vxofy",oss.str());
+		
 }
+
+void GeometryCustom::OutputVxofyEvolveProfile()
+{
+	
+	int t = sim->get_t();
+	if (t%1000 == 0)	
+	{
+		std::cout << "Vxofy frame data written." << std::endl;
+		std::stringstream oss;
+		oss << t << std::endl;
+		Vxofy->GetBinnedAverages(oss);
+		fout->RegisterOutput("Vxofy_evolve", oss.str());	
+	}
+}
+
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end

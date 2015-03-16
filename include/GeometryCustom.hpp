@@ -85,6 +85,7 @@ private:
 		void OutputParticleCount();
 		void OutputVxofyProfile();
 		void CalculateVxofyProfile();
+		void OutputVxofyEvolveProfile();
 		
 		
 		// User Defined functions
