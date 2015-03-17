@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <time.h>
+#include <chrono>
 
 #include <boost/function.hpp>
 #include <boost/property_tree/ptree.hpp>
