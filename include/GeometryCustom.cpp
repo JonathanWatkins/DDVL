@@ -193,7 +193,7 @@ void GeometryCustom::CheckEscapedVortices()
 		double x = p->get_x();
 		double y = p->get_y();
 		
-		if (x <= xlo ||	x >= xhi || y <= ylo || y >= yhi)
+		if (x < xlo ||	x > xhi || y < ylo || y > yhi)
 		{		
 			throw std::runtime_error("GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box.");
 			
