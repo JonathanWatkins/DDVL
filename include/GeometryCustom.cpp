@@ -195,7 +195,9 @@ void GeometryCustom::CheckEscapedVortices()
 		
 		if (x < xlo ||	x > xhi || y < ylo || y > yhi)
 		{		
-			throw std::runtime_error("GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box.");
+			std::stringstream oss;
+			oss << "GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box. (x,y) = (" << x << ", " << y << ")"; 
+			throw std::runtime_error(oss.str());
 			
 			//double xval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
 			//double yval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
