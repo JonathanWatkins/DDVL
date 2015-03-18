@@ -783,7 +783,7 @@ void GeometryCustom::OscillateTopCE()
 	{
 		if (p->get_y() > 10)
 		{	
-			p->set_vel(V0*cos(2*pi*omega*t), p->get_vely());
+			p->set_vel(V0*cos(omega*t), p->get_vely());
 			p->set_x(p->get_x()+p->get_velx()*dt);	
 		}	
 	}
@@ -823,6 +823,9 @@ void GeometryCustom::CalculateVxofyProfile()
 		FIRSTTIME=false;
 		oss << "period_timesteps  slice_timesteps" << std::endl;
 		oss << period_timesteps << " " << slice_timesteps << std::endl;
+		std::cout << "period_timesteps  slice_timesteps" << std::endl;
+		std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+		
 		fout->RegisterOutput("periods",oss.str());
 		oss.str("");
 	}
