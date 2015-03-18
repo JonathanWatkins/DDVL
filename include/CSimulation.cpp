@@ -43,6 +43,8 @@
 #include <omp.h>
 #include <limits.h>
 #include <iomanip>
+#include <chrono>
+#include <ratio>
 
 // Boost libraries
 //#include <boost/ptr_container/ptr_list.hpp>
@@ -62,11 +64,11 @@ CSimulation::CSimulation()
 	running = false;
 	paused = false;
 	simulation_time=0;
-	MonitorPeriod=0;
+	//MonitorPeriod=0;
 	startTime=0;
 	endTime=0;
 	seedtime = 0;
-	lasttime=0;
+	
 	jobnum="";
 	initialised=false;
 	geometry=0;
@@ -146,7 +148,7 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	//version.set_versionStr("1.0.0");	
 	startTime=clock();
 	seedtime = time(0);
-	lasttime=time(0);
+	lasttime=std::chrono::steady_clock::now();
 	jobBatchFileLocation=jobBatchFileLocation_;
 		
 	srand ( seedtime );
@@ -231,9 +233,12 @@ void CSimulation::CalculateAndOutputFinishTime()
 	
 	if (0==t%1000)
 	{
-		double newtime=time(0);
-		MonitorPeriod=newtime-lasttime;
+		std::chrono::steady_clock::time_point newtime = std::chrono::steady_clock::now();
+		//MonitorPeriod=newtime-lasttime;
+		std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(newtime - lasttime);
 		lasttime=newtime;
+		
+		double MonitorPeriod = time_span.count();
 
 		double hours = floor(MonitorPeriod*(simulation_time-t)/1000.0/60.0/60.0);
 		double minutes = (int)(MonitorPeriod*(simulation_time-t)/1000.0/60.0)%60;

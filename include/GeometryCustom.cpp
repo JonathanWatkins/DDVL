@@ -197,9 +197,13 @@ void GeometryCustom::CheckEscapedVortices()
 		double x = p->get_x();
 		double y = p->get_y();
 		
-		if (x <= xlo ||	x >= xhi || y <= ylo || y >= yhi)
+		if (x < xlo ||	x > xhi || y < ylo || y > yhi)
 		{		
-			throw std::runtime_error("GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box.");
+			std::stringstream oss;
+			oss << "GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box.";
+			oss << " (x,y) = (" << x << ", " << y << ")";
+			oss << " (x,y)_(t-1) = (" << p->get_lastx() << ", " << p->get_lasty() << ")";
+			throw std::runtime_error(oss.str());
 			
 			//double xval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
 			//double yval = xl+(xh-xlo)*(rand() % 1000)/1000.0;
@@ -362,6 +366,7 @@ void GeometryCustom::PerStepAnalysis()
 	  OutputParticlePositions(); 
 	  //OutputParticleCount();
 	  CalculateVxofyProfile();
+	  OutputVxofyEvolveProfile();
 }
 
 void GeometryCustom::EndofSimAnalysis()
@@ -798,11 +803,12 @@ void GeometryCustom::InitialiseFiles()
 		
 	fout->AddFileStream("posfile", "posdata.txt");
 	fout->AddFileStream("guifile", "guidata.dat");
-	fout->AddFileStream("framevel", "framevel.txt");
-	fout->AddFileStream("Nd", "Nd.txt");
+	//fout->AddFileStream("framevel", "framevel.txt");
+	//fout->AddFileStream("Nd", "Nd.txt");
 	fout->AddFileStream("avfile", "averagesdata.txt");
 	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
 	fout->AddFileStream("periods","periods.txt");
+	fout->AddFileStream("Vxofy_evolve","Vxofyprofile_evolve.txt");
  
  }
  
@@ -856,12 +862,29 @@ void GeometryCustom::CalculateVxofyProfile()
 }
 
 
+
 void GeometryCustom::OutputVxofyProfile()
 {
 	std::stringstream oss;
 	Vxofy->GetBinnedAverages(oss);
 	fout->RegisterOutput("Vxofy",oss.str());
+		
 }
+
+void GeometryCustom::OutputVxofyEvolveProfile()
+{
+	
+	int t = sim->get_t();
+	if (t%1000 == 0)	
+	{
+		std::cout << "Vxofy frame data written." << std::endl;
+		std::stringstream oss;
+		oss << t << std::endl;
+		Vxofy->GetBinnedAverages(oss);
+		fout->RegisterOutput("Vxofy_evolve", oss.str());	
+	}
+}
+
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end

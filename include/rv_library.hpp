@@ -4,7 +4,7 @@
 #ifndef rv_libraryH
 #define rv_libraryH
 //***************************************************************************
-
+#include <stdint.h>
 
 namespace RandomVariableStatisticalFunctions
 {

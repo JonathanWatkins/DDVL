@@ -50,7 +50,7 @@ private:
 		CCell ** clltarget_);											// Copy cell linked list
 
 	void vvInteration(
-		std::list<CParticle>::iterator p_,
+		CParticle * p_,
 		std::list<CParticle> & cell_, 
 		double (&force_)[2],
 		boost::function<double (double, CParallelEulerIntegrator *)> func_
@@ -67,7 +67,7 @@ private:
 			(double (&tempForce_)[2]);													// Calculates the force due to the thermostat				
 
 	void ApplyMaxVelocities
-			(std::list<CParticle>::iterator p_,
+			(CParticle * p_,
 			 double &velx_,
 			 double & vely_);												// Apply max velocities
 
@@ -82,6 +82,10 @@ private:
 	int what_icell(std::list<CParticle>::iterator a_) const;
 	
 	int what_jcell(std::list<CParticle>::iterator a_) const;
+	
+	int what_icell(CParticle * a_) const;
+	
+	int what_jcell(CParticle * a_) const;
 	
 	double LindemanTS() const;
 	
@@ -106,6 +110,7 @@ private:
 	std::string thermostat;
 	double b0;
 	double lambda;
+	double oneoverlambda;
 	double temp;
 		// reference variables
 	double M2;
@@ -119,6 +124,15 @@ private:
 	
 	CCell** cll;
 	CCell** lastcll;
+	
+	
+	std::vector<double> pot_table;
+	
+	double step;
+	double olambda;
+	double rmax;
+	
+	double fmax;
 
 	
 	
