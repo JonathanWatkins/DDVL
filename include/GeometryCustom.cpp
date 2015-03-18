@@ -788,7 +788,11 @@ void GeometryCustom::OscillateTopCE()
 	{
 		if (p->get_y() > 10)
 		{	
+<<<<<<< HEAD
 			p->set_vel(V0*cos(omega*t), p->get_vely());
+=======
+			p->set_vel(V0*cos(2*pi*omega*t), p->get_vely());
+>>>>>>> cc3fafc01b9130c92e59d671238b1299c64b9a26
 			p->set_x(p->get_x()+p->get_velx()*dt);	
 		}	
 	}
@@ -808,7 +812,10 @@ void GeometryCustom::InitialiseFiles()
 	fout->AddFileStream("avfile", "averagesdata.txt");
 	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
 	fout->AddFileStream("periods","periods.txt");
+<<<<<<< HEAD
 	fout->AddFileStream("Vxofy_evolve","Vxofyprofile_evolve.txt");
+=======
+>>>>>>> cc3fafc01b9130c92e59d671238b1299c64b9a26
  
  }
  
@@ -829,9 +836,12 @@ void GeometryCustom::CalculateVxofyProfile()
 		FIRSTTIME=false;
 		oss << "period_timesteps  slice_timesteps" << std::endl;
 		oss << period_timesteps << " " << slice_timesteps << std::endl;
+<<<<<<< HEAD
 		std::cout << "period_timesteps  slice_timesteps" << std::endl;
 		std::cout << period_timesteps << " " << slice_timesteps << std::endl;
 		
+=======
+>>>>>>> cc3fafc01b9130c92e59d671238b1299c64b9a26
 		fout->RegisterOutput("periods",oss.str());
 		oss.str("");
 	}
