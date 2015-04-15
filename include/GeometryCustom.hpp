@@ -86,6 +86,8 @@ private:
 		void OutputVxofyProfile();
 		void CalculateVxofyProfile();
 		void OutputVxofyEvolveProfile();
+		void CalculateVxofytProfile();
+		void OutputVxofytProfile();
 		
 		
 		// User Defined Update functions
@@ -123,6 +125,8 @@ private:
         FileOutput * fout;
 		
 		BinnedAccumulator * Vxofy;
+		BinnedAccumulator * Vxofyt;
+		
 		
         // temp variables for sheared wall jobs
         double Amp;

@@ -25,6 +25,8 @@ class BinnedAccumulator
 		void PrintBinnedAverages() const;
 		void GetBinnedAverages(std::stringstream & oss);
 		
+		void ClearValues();
+		
         
     private:
         

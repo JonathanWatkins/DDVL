@@ -66,6 +66,8 @@ GeometryCustom::~GeometryCustom()
     delete OtherParticlesList;
 	
 	delete Vxofy;
+	delete Vxofyt;
+	
     	
 }
 
@@ -130,6 +132,8 @@ void GeometryCustom::InitialiseParameters()
 	dely = yhi - ylo;
 	
 	Vxofy = new BinnedAccumulator(ylo,yhi,binsize);
+	Vxofyt = new BinnedAccumulator(ylo,yhi,binsize);
+	
 	
 	std::cout << "Custom geometry selected." << std::endl;
 	
@@ -366,6 +370,7 @@ void GeometryCustom::PerStepAnalysis()
 	  OutputParticlePositions(); 
 	  //OutputParticleCount();
 	  CalculateVxofyProfile();
+	  CalculateVxofytProfile();
 	  OutputVxofyEvolveProfile();
 }
 
@@ -809,7 +814,7 @@ void GeometryCustom::InitialiseFiles()
 	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
 	fout->AddFileStream("periods","periods.txt");
 	fout->AddFileStream("Vxofy_evolve","Vxofyprofile_evolve.txt");
-
+	fout->AddFileStream("Vxofyt","Vxofytprofile.txt");
  
  }
  
@@ -847,7 +852,7 @@ void GeometryCustom::CalculateVxofyProfile()
     
 		
 	if (sliceindex!=1) return;
- 	std::cout << "out";
+ 	//std::cout << "out";
 	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
  			p != triangulatedParticlesList->end(); ++p)
  	{
@@ -863,7 +868,66 @@ void GeometryCustom::CalculateVxofyProfile()
 	
 }
 
-
+void GeometryCustom::CalculateVxofytProfile()
+{
+	int t = sim->get_t();
+	
+	static int numslices = 20;
+	static double period_timesteps = 2*pi/omega/dt;
+	static double slice_timesteps = period_timesteps/numslices;
+	
+	static bool FIRSTTIME = true;
+	
+	std::stringstream oss;
+	
+	if (FIRSTTIME==true)
+	{
+		FIRSTTIME=false;
+		oss << "period_timesteps  slice_timesteps" << std::endl;
+		oss << period_timesteps << " " << slice_timesteps << std::endl;
+		
+		std::cout << "Vxoft parameters" << std::endl;
+		std::cout << "period_timesteps  slice_timesteps" << std::endl;
+		std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+		
+		fout->RegisterOutput("periods",oss.str());
+		oss.str("");
+	}
+	
+		
+	//std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+	
+	static int lastsliceindex = 0;
+	
+	int sliceindex = (t % int(period_timesteps))/slice_timesteps;
+	if (sliceindex != lastsliceindex)
+	{
+		OutputVxofytProfile();
+		Vxofyt->ClearValues();
+		lastsliceindex = sliceindex;
+	}
+	
+	//std::cout << sliceindex << std::endl;
+	//oss << "t: " << t << " " << sliceindex << std::endl;
+	//fout->RegisterOutput("periods",oss.str());
+    
+		
+	//if (sliceindex!=1) return;
+ 	//std::cout << "out";
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+ 			p != triangulatedParticlesList->end(); ++p)
+ 	{
+ 		if (p->get_ghost()==true) continue;		
+ 		
+ 		
+ 		double y = p->get_y(); 
+ 		double f = p->get_velx();
+		Vxofyt->AddValue(y,f);
+			
+ 	}
+	
+	
+}
 
 void GeometryCustom::OutputVxofyProfile()
 {
@@ -879,13 +943,27 @@ void GeometryCustom::OutputVxofyEvolveProfile()
 	int t = sim->get_t();
 	if (t%1000 == 0)	
 	{
-		std::cout << "Vxofy frame data written." << std::endl;
+		std::cout << "VxofyEvolve output." << std::endl;
 		std::stringstream oss;
 		oss << t << std::endl;
 		Vxofy->GetBinnedAverages(oss);
 		fout->RegisterOutput("Vxofy_evolve", oss.str());	
 	}
 }
+
+void GeometryCustom::OutputVxofytProfile()
+{
+	
+	int t = sim->get_t();
+
+	std::cout << "Vxofyt slice output." << std::endl;
+	std::stringstream oss;
+	oss << t << std::endl;
+	Vxofyt->GetBinnedAverages(oss);
+	fout->RegisterOutput("Vxofyt", oss.str());	
+	
+}
+
 
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
