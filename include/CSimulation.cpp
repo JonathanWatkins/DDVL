@@ -24,8 +24,8 @@
 // GeometryBase Types
 #include "GeometryChannel.hpp"
 #include "GeometryTube.hpp"
-#include "GeometryCustom.hpp"   
-
+#include "GeometryCustom.hpp" 
+#include "GeometryWedge.hpp" 
 
 //#include "CParameter.hpp"
 
@@ -259,6 +259,7 @@ GeometryBase * CSimulation::CreateGeometry()
         case 0:  return new GeometryChannel(this);            break;
         case 1:  return new GeometryTube(this);   	          break;
         case 2:  return new GeometryCustom(this);             break;
+        case 3:  return new GeometryWedge(this);	          break;
         default:   throw std::runtime_error("CSimulation:CreateGeometry()  Bad character");
     }
 }

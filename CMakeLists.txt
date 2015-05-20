@@ -74,6 +74,7 @@ include/GeometryBase.cpp
 include/GeometryChannel.cpp
 include/GeometryTube.cpp
 include/GeometryCustom.cpp
+include/GeometryWedge.cpp
 include/rv_library.cpp
 include/thermostats.cpp
 include/BinnedAccumulator.cpp
