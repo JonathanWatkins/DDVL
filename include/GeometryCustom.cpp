@@ -593,7 +593,7 @@ void GeometryCustom::OutputFinalParticlePositions()
 		}
 	}
 	
-	if (OtherParticlesList.size()!=0) oss << std::endl;
+	if (OtherParticlesList->size()!=0) oss << std::endl;
 	
 	
 	for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
