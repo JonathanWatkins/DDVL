@@ -57,7 +57,7 @@ public:
 	
 	// getters in header file
 	
-	int get_geometry() const {	return geometry; }
+	//int get_geometry() const {	return geometry; }
 	
 	FileOutput * GetFileOutput() { return fout; }
 	
@@ -150,7 +150,7 @@ private:
 	double ftime;
 	
 	
-	int geometry;
+	std::string geometry;
 	
 	FileOutput * fout;
 	

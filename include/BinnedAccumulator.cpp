@@ -82,6 +82,20 @@ void BinnedAccumulator::GetBinnedAverages(std::stringstream & oss)
 	
 }
 
+void BinnedAccumulator::ClearValues()
+{
+	for (int i = 0; i < numbins_; ++i)
+	{
+		values_[i].xsum = 0;
+		values_[i].fsum = 0;
+		values_[i].fsquaredsum = 0;
+		values_[i].N = 0;
+		
+	}
+	
+	
+}
+
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 //	end

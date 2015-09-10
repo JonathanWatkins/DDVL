@@ -69,6 +69,7 @@ void CParallelEulerIntegrator::Initialise()
 	// initialise force
 	
 	step = 0.0001;
+	ostep = 1/step;
 	olambda = 1/1.11;
 	rmax = 6.66;
 	for (long i = 1; i<=int(6.66/step)+1; ++i)
@@ -421,7 +422,7 @@ void CParallelEulerIntegrator::vvInteration(
 		
 		double r= sqrt( rsq );
 		double oneoverr=1/r;
-		
+		double oneoverstep=1/step;
 		// calculate rhat
 		
 		if (r==0)
@@ -440,7 +441,7 @@ void CParallelEulerIntegrator::vvInteration(
 		else
 		{
 			int pot_lindex=static_cast<int>(floor(r/step))-1;
-		    f = lerp(pot_table[pot_lindex],pot_table[pot_lindex+1],r-(pot_lindex+1)*step);
+		    f = lerp(pot_table[pot_lindex],pot_table[pot_lindex+1],r*oneoverstep-(pot_lindex+1));
                 
 		}
 		

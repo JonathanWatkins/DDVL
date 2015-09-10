@@ -1,8 +1,8 @@
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  GeometryCustom.h
+//  GeometryOscWall.h
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-#ifndef GeometryCustomHPP
-#define GeometryCustomHPP
+#ifndef GeometryOscWallHPP
+#define GeometryOscWallHPP
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "GeometryBase.hpp"
@@ -19,14 +19,14 @@ class FileOutput;
 class BinnedAccumulator;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  class GeometryCustom
+//  class GeometryOscWall
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-class GeometryCustom : public GeometryBase
+class GeometryOscWall : public GeometryBase
 {
     public:
-        GeometryCustom(CSimulation * sim_);
-        ~GeometryCustom();
+        GeometryOscWall(CSimulation * sim_);
+        ~GeometryOscWall();
         
         
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -86,9 +86,12 @@ private:
 		void OutputVxofyProfile();
 		void CalculateVxofyProfile();
 		void OutputVxofyEvolveProfile();
+		void CalculateVxofytProfile();
+		void OutputVxofytProfile();
 		
 		
-		// User Defined functions
+		// User Defined Update functions
+		void OscillateTopCE();
 		
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -122,9 +125,19 @@ private:
         FileOutput * fout;
 		
 		BinnedAccumulator * Vxofy;
+		BinnedAccumulator * Vxofyt;
+		
 		
         // temp variables for sheared wall jobs
-        double topwallvel;
+        double Amp;
+		double omega;
+		
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// class specific constants
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX			
+		
+		const double pi = 3.14159265358979;
+
     
 };
 

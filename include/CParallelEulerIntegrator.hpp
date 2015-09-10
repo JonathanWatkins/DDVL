@@ -130,6 +130,7 @@ private:
 	
 	double step;
 	double olambda;
+	double ostep;
 	double rmax;
 	
 	double fmax;

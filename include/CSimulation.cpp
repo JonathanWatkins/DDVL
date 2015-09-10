@@ -26,6 +26,9 @@
 #include "GeometryTube.hpp"
 #include "GeometryCustom.hpp" 
 #include "GeometryWedge.hpp" 
+#include "GeometryOscWall.hpp" 
+#include "GeometryShearedWall.hpp" 
+
 
 //#include "CParameter.hpp"
 
@@ -71,7 +74,7 @@ CSimulation::CSimulation()
 	
 	jobnum="";
 	initialised=false;
-	geometry=0;
+	geometry="";
 	jobtag="";
 	t=0;
 	framedataInterval=0;
@@ -154,7 +157,7 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	srand ( seedtime );
 		
 	
-	ReadVariableFromBatchFile(geometry,"Header.geometry");  // reads geometry from batch file
+	ReadVariableFromBatchFile<std::string>(geometry,"Header.geometry");  // reads geometry from batch file
 		
 	ReadVariableFromBatchFile(simulation_time,"Header.simulationTime");
 	
@@ -254,14 +257,17 @@ GeometryBase * CSimulation::CreateGeometry()
 {
     //char o_type = inp_->GetOtype();
     
-    switch(geometry)
-    {
-        case 0:  return new GeometryChannel(this);            break;
-        case 1:  return new GeometryTube(this);   	          break;
-        case 2:  return new GeometryCustom(this);             break;
-        case 3:  return new GeometryWedge(this);	          break;
-        default:   throw std::runtime_error("CSimulation:CreateGeometry()  Bad character");
-    }
+    if(geometry=="channel") return new GeometryChannel(this);
+    if(geometry=="tube") return new GeometryTube(this);
+    if(geometry=="custom") return new GeometryCustom(this);
+    if(geometry=="wedge") return new GeometryWedge(this);
+    if(geometry=="oscwall") return new GeometryOscWall(this);
+	if(geometry=="shearedwall") return new GeometryShearedWall(this);
+	
+	std::stringstream oss;
+	oss << "CSimulation:CreateGeometry()  Bad geometry selected. " << geometry;  
+	throw std::runtime_error(oss.str());
+	
 }
 
 IntegratorBase * CSimulation::SelectIntegrator()

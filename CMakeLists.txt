@@ -75,9 +75,12 @@ include/GeometryChannel.cpp
 include/GeometryTube.cpp
 include/GeometryCustom.cpp
 include/GeometryWedge.cpp
+include/GeometryOscWall.cpp
+include/GeometryShearedWall.cpp
 include/rv_library.cpp
 include/thermostats.cpp
 include/BinnedAccumulator.cpp
+
 )
 
 add_library(DTlib

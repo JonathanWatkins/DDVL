@@ -1,8 +1,8 @@
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  GeometryCustom.h
+//  GeometryShearedWall.h
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-#ifndef GeometryCustomHPP
-#define GeometryCustomHPP
+#ifndef GeometryShearedWallHPP
+#define GeometryShearedWallHPP
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "GeometryBase.hpp"
@@ -19,14 +19,14 @@ class FileOutput;
 class BinnedAccumulator;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  class GeometryCustom
+//  class GeometryShearedWall
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-class GeometryCustom : public GeometryBase
+class GeometryShearedWall : public GeometryBase
 {
     public:
-        GeometryCustom(CSimulation * sim_);
-        ~GeometryCustom();
+        GeometryShearedWall(CSimulation * sim_);
+        ~GeometryShearedWall();
         
         
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -89,7 +89,7 @@ private:
 		
 		
 		// User Defined functions
-		
+		void MoveTopCE();
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables

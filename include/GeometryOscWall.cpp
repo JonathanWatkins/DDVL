@@ -1,5 +1,5 @@
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//	GeometryCustom.cpp
+//	GeometryOscWall.cpp
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #pragma warning ( disable : 2586  )  // supresses warning a bug due to icc and boost compilation
@@ -13,7 +13,7 @@
 //#include <boost/property_tree/ptree.hpp>
 //#include <boost/property_tree/ini_parser.hpp>
 
-#include "GeometryCustom.hpp"
+#include "GeometryOscWall.hpp"
 #include "CSimulation.hpp"
 #include "CParticle.hpp"
 #include "FileOutput.hpp"
@@ -24,7 +24,7 @@
 //	constructor
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-GeometryCustom::GeometryCustom(CSimulation * sim_)
+GeometryOscWall::GeometryOscWall(CSimulation * sim_)
 {
 	
 	sim=sim_;
@@ -53,12 +53,12 @@ GeometryCustom::GeometryCustom(CSimulation * sim_)
     wrapx=false;
     wrapy=false;
     
-    topwallvel=0;
-    
+    omega=0;
+	Amp=0;
         
 }
 
-GeometryCustom::~GeometryCustom()
+GeometryOscWall::~GeometryOscWall()
 {
 	delete triangulatedParticlesList;
     delete triangulatedLinesList;
@@ -66,10 +66,12 @@ GeometryCustom::~GeometryCustom()
     delete OtherParticlesList;
 	
 	delete Vxofy;
+	delete Vxofyt;
+	
     	
 }
 
-void GeometryCustom::LoadBatchFile()
+void GeometryOscWall::LoadBatchFile()
 {
 	std::cout << "Loading job batch file..." << std::endl;
 	
@@ -80,6 +82,8 @@ void GeometryCustom::LoadBatchFile()
 	sim->ReadVariableFromBatchFile(Phi, "Interactions.Phi");
 	sim->ReadVariableFromBatchFile(forcerange, "GeneralParameters.forceRange");
 	sim->ReadVariableFromBatchFile(dt, "GeneralParameters.dt");
+
+	
 	
 	// analysis variables
 	sim->ReadVariableFromBatchFile(binsize, "GeneralParameters.binSize");
@@ -92,14 +96,16 @@ void GeometryCustom::LoadBatchFile()
 	}
 	
     //
-    sim->ReadVariableFromBatchFile(topwallvel,"Wall.topwallvel");
+    sim->ReadVariableFromBatchFile(Amp,"Wall.Amp");
+    sim->ReadVariableFromBatchFile(omega,"Wall.omega");
     
+	
 	std::cout << "   Job Header loaded.\n\n";
 	
 	
 }
 
-void GeometryCustom::InitialiseGeometry()
+void GeometryOscWall::InitialiseGeometry()
 {
 	InitialiseFiles();
 	LoadBatchFile();
@@ -109,7 +115,7 @@ void GeometryCustom::InitialiseGeometry()
 	
 }
 
-void GeometryCustom::InitialiseParameters()
+void GeometryOscWall::InitialiseParameters()
 {
 	
 	// calculate system parameters
@@ -126,12 +132,14 @@ void GeometryCustom::InitialiseParameters()
 	dely = yhi - ylo;
 	
 	Vxofy = new BinnedAccumulator(ylo,yhi,binsize);
+	Vxofyt = new BinnedAccumulator(ylo,yhi,binsize);
+	
 	
 	std::cout << "Custom geometry selected." << std::endl;
 	
 }
 
-void GeometryCustom::InitialiseVortices()
+void GeometryOscWall::InitialiseVortices()
 {
 
 	std::cout << "Initialising Vortices..." << std::endl;
@@ -150,8 +158,8 @@ void GeometryCustom::InitialiseVortices()
 		{	
 			myfile >> xlo >> xhi >> ylo >> yhi;
 		}
-		if (xhi<=xlo) throw std::runtime_error("GeometryCustom()::InitialiseVortices() Requires xhi>xlo");
-		if (yhi<=ylo) throw std::runtime_error("GeometryCustom()::InitialiseVortices() Requires yhi>ylo");
+		if (xhi<=xlo) throw std::runtime_error("GeometryOscWall()::InitialiseVortices() Requires xhi>xlo");
+		if (yhi<=ylo) throw std::runtime_error("GeometryOscWall()::InitialiseVortices() Requires yhi>ylo");
 		
 		double xval;
 		double yval;
@@ -175,7 +183,7 @@ void GeometryCustom::InitialiseVortices()
 	else // Make random mobile particles and CE particles
 	{	
 		std::stringstream oss;
-		oss << "GeometryCustom::InitialiseVortices() Could not load file " << pos_file_name;
+		oss << "GeometryOscWall::InitialiseVortices() Could not load file " << pos_file_name;
 		throw std::runtime_error(oss.str());
 	}
 	
@@ -183,7 +191,7 @@ void GeometryCustom::InitialiseVortices()
 				<< " and " << OtherParticlesList->size() << " other votices." << std::endl << std::endl;
 }
                      
-void GeometryCustom::CheckEscapedVortices()
+void GeometryOscWall::CheckEscapedVortices()
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
  	for (std::list<CParticle>::iterator p = AParticlesList->begin();
@@ -196,7 +204,7 @@ void GeometryCustom::CheckEscapedVortices()
 		if (x < xlo ||	x > xhi || y < ylo || y > yhi)
 		{		
 			std::stringstream oss;
-			oss << "GeometryCustom::CheckEscapedVortices() Vortices have escaped from the simulation box.";
+			oss << "GeometryOscWall::CheckEscapedVortices() Vortices have escaped from the simulation box.";
 			oss << " (x,y) = (" << x << ", " << y << ")";
 			oss << " (x,y)_(t-1) = (" << p->get_lastx() << ", " << p->get_lasty() << ")";
 			throw std::runtime_error(oss.str());
@@ -214,7 +222,7 @@ void GeometryCustom::CheckEscapedVortices()
 	
 }
 
-void GeometryCustom::KeepParticlesInSimBoxX()
+void GeometryOscWall::KeepParticlesInSimBoxX()
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
  	for (std::list<CParticle>::iterator p = AParticlesList->begin();
@@ -235,7 +243,7 @@ void GeometryCustom::KeepParticlesInSimBoxX()
 	
 }
 
-void GeometryCustom::KeepParticlesInSimBoxY()
+void GeometryOscWall::KeepParticlesInSimBoxY()
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
  	for (std::list<CParticle>::iterator p = AParticlesList->begin();
@@ -255,14 +263,14 @@ void GeometryCustom::KeepParticlesInSimBoxY()
 	
 }
 
-void GeometryCustom::TestX(std::list<CParticle>::iterator p)
+void GeometryOscWall::TestX(std::list<CParticle>::iterator p)
 {
 	double x = p->get_x();
 				
 	if (x < xlo && x > -forcerange )  // left of sim box in -forcerange < x < xlo
 	{	
 		double testx = x+delx;
-		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryOscWall::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
 		p->set_x(testx);
 		//std::cout << testx << std::endl;
 	}
@@ -270,7 +278,7 @@ void GeometryCustom::TestX(std::list<CParticle>::iterator p)
 	if (x > xhi && x < xhi+forcerange )  // right of sim box in xhi < x < xhi
 	{	
 		double testx = x-delx;
-		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		if (testx < xlo || testx > xhi) throw std::runtime_error("GeometryOscWall::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
 		p->set_x(testx);
 		//std::cout << testx << std::endl;
 	}
@@ -278,28 +286,28 @@ void GeometryCustom::TestX(std::list<CParticle>::iterator p)
 	
 }
 
-void GeometryCustom::TestY(std::list<CParticle>::iterator p)
+void GeometryOscWall::TestY(std::list<CParticle>::iterator p)
 {
 	double y = p->get_y();
 		
 	if (y < ylo && y > -forcerange )  // left of sim box in -forcerange < y < ylo
 	{	
 		double testy = y+dely;
-		if (testy < ylo || testy > yhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		if (testy < ylo || testy > yhi) throw std::runtime_error("GeometryOscWall::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
 		p->set_y(testy);
 	}
 			
 	if (y > yhi && y < yhi+forcerange )  // right of sim box in yhi < y < yhi
 	{	
 		double testy = y-dely;
-		if (testy < ylo || testy > yhi) throw std::runtime_error("GeometryCustom::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
+		if (testy < ylo || testy > yhi) throw std::runtime_error("GeometryOscWall::KeepParticlesInSimBoxXY() Particles escaped the simulation box.");
 		p->set_y(testy);
 	}
 
 }
 
 
-void GeometryCustom::KeepParticlesInSimBoxXY()
+void GeometryOscWall::KeepParticlesInSimBoxXY()
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
  	for (std::list<CParticle>::iterator p = AParticlesList->begin();
@@ -318,7 +326,7 @@ void GeometryCustom::KeepParticlesInSimBoxXY()
 	
 }
 
-void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
+void GeometryOscWall::AddParticlesForDT(std::list<CParticle> & iList)
 {
 	// Add A particles
 	iList.clear();
@@ -357,15 +365,16 @@ void GeometryCustom::AddParticlesForDT(std::list<CParticle> & iList)
 	//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 }
 
-void GeometryCustom::PerStepAnalysis()
+void GeometryOscWall::PerStepAnalysis()
 {
 	  OutputParticlePositions(); 
 	  //OutputParticleCount();
 	  CalculateVxofyProfile();
+	  CalculateVxofytProfile();
 	  OutputVxofyEvolveProfile();
 }
 
-void GeometryCustom::EndofSimAnalysis()
+void GeometryOscWall::EndofSimAnalysis()
 {
 	OutputFinalParticlePositions();
 	OutputAverages();
@@ -373,7 +382,7 @@ void GeometryCustom::EndofSimAnalysis()
 
 }
 
-void GeometryCustom::PerStepUpdates()
+void GeometryOscWall::PerStepUpdates()
 {
 	UserUpdates();
 	if (wrapx==true && wrapy==false) KeepParticlesInSimBoxX();
@@ -382,7 +391,7 @@ void GeometryCustom::PerStepUpdates()
 	CheckEscapedVortices();
 }
 
-void GeometryCustom::WrapVorticesX(std::list<CParticle>& jList)
+void GeometryOscWall::WrapVorticesX(std::list<CParticle>& jList)
 {
 		
 	// Add periodic x particles	
@@ -398,7 +407,7 @@ void GeometryCustom::WrapVorticesX(std::list<CParticle>& jList)
 	}
 }
 
-void GeometryCustom::WrapVorticesY(std::list<CParticle>& jList)
+void GeometryOscWall::WrapVorticesY(std::list<CParticle>& jList)
 {
 		
 	// Add periodic y particles	
@@ -416,7 +425,7 @@ void GeometryCustom::WrapVorticesY(std::list<CParticle>& jList)
 
 }
 
-void GeometryCustom::WrapVorticesXY(std::list<CParticle>& jList)
+void GeometryOscWall::WrapVorticesXY(std::list<CParticle>& jList)
 {
 		
 	// Add periodic y particles	
@@ -440,7 +449,7 @@ void GeometryCustom::WrapVorticesXY(std::list<CParticle>& jList)
 
 }
 
-void GeometryCustom::DoWrapX(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+void GeometryOscWall::DoWrapX(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
 {
 	if (p->get_x() <= xlo+forcerange)  // forcerange
 	{
@@ -463,7 +472,7 @@ void GeometryCustom::DoWrapX(std::list<CParticle>::iterator p, std::list<CPartic
 }
 
 
-void GeometryCustom::DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+void GeometryOscWall::DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
 {
 	if (p->get_y() <= ylo+forcerange)  // forcerange
 	{
@@ -485,7 +494,7 @@ void GeometryCustom::DoWrapY(std::list<CParticle>::iterator p, std::list<CPartic
 	}
 }
 
-void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+void GeometryOscWall::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
 {
 
 	if (p->get_y() <= ylo+forcerange)
@@ -572,7 +581,7 @@ void GeometryCustom::DoWrapXY(std::list<CParticle>::iterator p, std::list<CParti
 	
 }
 
-void GeometryCustom::OutputFinalParticlePositions()
+void GeometryOscWall::OutputFinalParticlePositions()
 {
 	
 	int t = sim->get_t();
@@ -613,7 +622,7 @@ void GeometryCustom::OutputFinalParticlePositions()
 	
 }
 
-void GeometryCustom::OutputParticlePositions()
+void GeometryOscWall::OutputParticlePositions()
 {
 	std::stringstream oss;
 	
@@ -697,7 +706,7 @@ void GeometryCustom::OutputParticlePositions()
 	fout->RegisterOutput("guifile",oss2.str()); 
 }
 
-void GeometryCustom::OutputAverages()
+void GeometryOscWall::OutputAverages()
 {	
 	int t = sim->get_t();
 	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("Averages must be output at the end of the simulation.");
@@ -713,12 +722,12 @@ void GeometryCustom::OutputAverages()
 	
 }
 
-std::list<CParticle> * GeometryCustom::GetIParticles()
+std::list<CParticle> * GeometryOscWall::GetIParticles()
 {
 	return AParticlesList;
 }
 
-void GeometryCustom::GetJParticles(std::list<CParticle> & jList)
+void GeometryOscWall::GetJParticles(std::list<CParticle> & jList)
 {
 	// Add A particles
 	jList.clear();
@@ -735,7 +744,7 @@ void GeometryCustom::GetJParticles(std::list<CParticle> & jList)
 	
 }
 
-void GeometryCustom::GetPeriodicity()
+void GeometryOscWall::GetPeriodicity()
 {
 	std::string pstr;
 	sim->ReadVariableFromBatchFile(pstr, "Geometry.periodicity");
@@ -745,7 +754,7 @@ void GeometryCustom::GetPeriodicity()
 	if (pstr.find("y")!=std::string::npos) wrapy=true;
 } 
 
-void GeometryCustom::OutputParticleCount()
+void GeometryOscWall::OutputParticleCount()
 {
 	
 	std::cout << "Langevin particles: " << AParticlesList->size() << std::endl;
@@ -755,14 +764,48 @@ void GeometryCustom::OutputParticleCount()
 //	UserUpdates
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  
- void GeometryCustom::UserUpdates()
+ void GeometryOscWall::UserUpdates()
  {
 	 // Add functions here to be run every timestep
-	 
+	 OscillateTopCE();
  }
  
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
+//
+//  OscillateTopCE()
+//
+//   V = V0 * Cos(omega * t)
+//   x = x0 + V0/omega*Sin(omega*t)
+//   x0 = 0
+//   --> x = V0/omega*Sin(omega*t)
+//   
+//   xmax = V0/omega  --> if max amplitude = a0/4, V0 = 0.006 and a0 = 1
+//   --> omega = V0/amp
+//   phase space ->  amp = a0/10  to a0/4
+//                   omega = 0.004  to 0.06
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX 
  
-void GeometryCustom::InitialiseFiles()
+void GeometryOscWall::OscillateTopCE()
+{
+	double t = sim->get_time();
+	
+	static double V0 = omega*Amp;
+	
+	for (std::list<CParticle>::iterator p = OtherParticlesList->begin();
+		p!=OtherParticlesList->end(); ++p)
+	{
+		if (p->get_y() > 10)
+		{	
+			p->set_vel(V0*cos(omega*t), p->get_vely());
+			p->set_x(p->get_x()+p->get_velx()*dt);	
+		}	
+	}
+} 
+
+ 
+ 
+ 
+void GeometryOscWall::InitialiseFiles()
  {
 	// add files to outputter
 		
@@ -772,30 +815,124 @@ void GeometryCustom::InitialiseFiles()
 	//fout->AddFileStream("Nd", "Nd.txt");
 	fout->AddFileStream("avfile", "averagesdata.txt");
 	fout->AddFileStream("Vxofy","Vxofyprofile.txt");
+	fout->AddFileStream("periods","periods.txt");
 	fout->AddFileStream("Vxofy_evolve","Vxofyprofile_evolve.txt");
+	fout->AddFileStream("Vxofyt","Vxofytprofile.txt");
  
  }
  
-void GeometryCustom::CalculateVxofyProfile()
+void GeometryOscWall::CalculateVxofyProfile()
 {
- 	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+	int t = sim->get_t();
+	
+	static int numslices = 10;
+	static double period_timesteps = 2*pi/omega/dt;
+	static double slice_timesteps = period_timesteps/numslices;
+	
+	static bool FIRSTTIME = true;
+	
+	std::stringstream oss;
+	
+	if (FIRSTTIME==true)
+	{
+		FIRSTTIME=false;
+		oss << "period_timesteps  slice_timesteps" << std::endl;
+		oss << period_timesteps << " " << slice_timesteps << std::endl;
+
+		std::cout << "period_timesteps  slice_timesteps" << std::endl;
+		std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+		
+		fout->RegisterOutput("periods",oss.str());
+		oss.str("");
+	}
+	
+		
+	//std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+	int sliceindex = (t % int(period_timesteps))/slice_timesteps;
+	//std::cout << sliceindex << std::endl;
+	oss << "t: " << t << " " << sliceindex << std::endl;
+	fout->RegisterOutput("periods",oss.str());
+    
+		
+	if (sliceindex!=1) return;
+ 	//std::cout << "out";
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
  			p != triangulatedParticlesList->end(); ++p)
  	{
  		if (p->get_ghost()==true) continue;		
  		
  		
- 		double x = p->get_y(); 
+ 		double y = p->get_y(); 
  		double f = p->get_velx();
-		Vxofy->AddValue(x,f);
+		Vxofy->AddValue(y,f);
 			
  	}
 	
 	
 }
 
+void GeometryOscWall::CalculateVxofytProfile()
+{
+	int t = sim->get_t();
+	
+	static int numslices = 20;
+	static double period_timesteps = 2*pi/omega/dt;
+	static double slice_timesteps = period_timesteps/numslices;
+	
+	static bool FIRSTTIME = true;
+	
+	std::stringstream oss;
+	
+	if (FIRSTTIME==true)
+	{
+		FIRSTTIME=false;
+		oss << "period_timesteps  slice_timesteps" << std::endl;
+		oss << period_timesteps << " " << slice_timesteps << std::endl;
+		
+		std::cout << "Vxoft parameters" << std::endl;
+		std::cout << "period_timesteps  slice_timesteps" << std::endl;
+		std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+		
+		fout->RegisterOutput("periods",oss.str());
+		oss.str("");
+	}
+	
+		
+	//std::cout << period_timesteps << " " << slice_timesteps << std::endl;
+	
+	static int lastsliceindex = 0;
+	
+	int sliceindex = (t % int(period_timesteps))/slice_timesteps;
+	if (sliceindex != lastsliceindex)
+	{
+		OutputVxofytProfile();
+		Vxofyt->ClearValues();
+		lastsliceindex = sliceindex;
+	}
+	
+	//std::cout << sliceindex << std::endl;
+	//oss << "t: " << t << " " << sliceindex << std::endl;
+	//fout->RegisterOutput("periods",oss.str());
+    
+		
+	//if (sliceindex!=1) return;
+ 	//std::cout << "out";
+	for (std::list<CParticle>::iterator p = triangulatedParticlesList->begin();
+ 			p != triangulatedParticlesList->end(); ++p)
+ 	{
+ 		if (p->get_ghost()==true) continue;		
+ 		
+ 		
+ 		double y = p->get_y(); 
+ 		double f = p->get_velx();
+		Vxofyt->AddValue(y,f);
+			
+ 	}
+	
+	
+}
 
-
-void GeometryCustom::OutputVxofyProfile()
+void GeometryOscWall::OutputVxofyProfile()
 {
 	std::stringstream oss;
 	Vxofy->GetBinnedAverages(oss);
@@ -803,19 +940,33 @@ void GeometryCustom::OutputVxofyProfile()
 		
 }
 
-void GeometryCustom::OutputVxofyEvolveProfile()
+void GeometryOscWall::OutputVxofyEvolveProfile()
 {
 	
 	int t = sim->get_t();
 	if (t%1000 == 0)	
 	{
-		std::cout << "Vxofy frame data written." << std::endl;
+		std::cout << "VxofyEvolve output." << std::endl;
 		std::stringstream oss;
 		oss << t << std::endl;
 		Vxofy->GetBinnedAverages(oss);
 		fout->RegisterOutput("Vxofy_evolve", oss.str());	
 	}
 }
+
+void GeometryOscWall::OutputVxofytProfile()
+{
+	
+	int t = sim->get_t();
+
+	std::cout << "Vxofyt slice output." << std::endl;
+	std::stringstream oss;
+	oss << t << std::endl;
+	Vxofyt->GetBinnedAverages(oss);
+	fout->RegisterOutput("Vxofyt", oss.str());	
+	
+}
+
 
  
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
