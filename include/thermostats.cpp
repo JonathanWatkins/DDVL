@@ -26,6 +26,8 @@
 //
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+
+// 2D
 void thermostats::Andersen(double T_, double kB_, double eta_, double dt_, double tau_, double * tempForce_)
 {
     double p=dt_/tau_;
@@ -41,16 +43,29 @@ void thermostats::Andersen(double T_, double kB_, double eta_, double dt_, doubl
 	tempForce_[0]=tempforce*sin(theta);
 	tempForce_[1]=tempforce*cos(theta);
 	
-	/*if (tempForce_[0]!=tempForce_[0] || tempForce_[1] != tempForce_[1]) {
-		std::cout << "temp nan" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
-		tempForce_[0]=0;
-		tempForce_[1]=0;
-	}
-	
-	if (boost::math::isinf(tempForce_[0]) || boost::math::isinf(tempForce_[1]))
-	std::cout << "t: " << sim->get_t() << "temperature inf" << "(" << tempForce_[0] << ", " << tempForce_[1] << ")" << std::endl;
-	*/
 }
+
+// 3D
+void thermostats::Andersen3D(double T_, double kB_, double eta_, double dt_, double tau_, double * tempForce_)
+{
+    double p=dt_/tau_;
+    double tempforce=0;
+	if (p>rv::MT_rand_U())
+	{	
+		
+		tempforce =  sqrt(2*T_*kB_*eta_/dt_/p)*rv::MT_rand_N();
+	}
+    
+	double theta = rv::MT_rand_U()*M_PI;
+	double phi = rv::MT_rand_U()*2*M_PI;
+			
+	tempForce_[0]=tempforce*sin(theta)*cos(phi);
+	tempForce_[1]=tempforce*sin(theta)*sin(phi);
+	tempForce_[2]=tempforce*cos(theta);
+	
+	
+}
+
 
 //***************************************************************************
 //

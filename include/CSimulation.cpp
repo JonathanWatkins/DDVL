@@ -19,6 +19,7 @@
 // IntegratorBase Types
 #include "CParallelEulerIntegrator.hpp"
 #include "CParallelEulerFMAIntegrator.hpp"
+#include "IntegratorBuckledSubstrate.hpp"
 
 
 // GeometryBase Types
@@ -28,6 +29,7 @@
 #include "GeometryWedge.hpp" 
 #include "GeometryOscWall.hpp" 
 #include "GeometryShearedWall.hpp" 
+#include "GeometryBuckledSubstrate.hpp"
 
 
 //#include "CParameter.hpp"
@@ -171,11 +173,11 @@ int CSimulation::Initialise(std::string jobBatchFileLocation_)
 	
 	InitialiseFileOutput(); // must be done before initialise geometry
 		
-	geom = CreateGeometry();
+	geom = CreateGeometry();  
 	
 	geom->InitialiseGeometry();
 		
-	integrator = SelectIntegrator();
+	integrator = SelectIntegrator(); // geometry knows the integrator to use
 	
 	integrator->Initialise();
 	
@@ -263,6 +265,8 @@ GeometryBase * CSimulation::CreateGeometry()
     if(geometry=="wedge") return new GeometryWedge(this);
     if(geometry=="oscwall") return new GeometryOscWall(this);
 	if(geometry=="shearedwall") return new GeometryShearedWall(this);
+	if(geometry=="buckledsubstrate") return new GeometryBuckledSubstrate(this);
+	
 	
 	std::stringstream oss;
 	oss << "CSimulation:CreateGeometry()  Bad geometry selected. " << geometry;  
@@ -272,15 +276,19 @@ GeometryBase * CSimulation::CreateGeometry()
 
 IntegratorBase * CSimulation::SelectIntegrator()
 {
-    //char o_type = inp_->GetOtype();
-    char integrator_type = 'V';  //  A = Parallel Euler integrator using F = M A
-								 //  V = Parallel Euler integrator using F = eta V
-    switch(integrator_type)
-    {
-        case 'A':  return new CParallelEulerFMAIntegrator(this);            break;
-        case 'V':  return new CParallelEulerIntegrator(this);             break;
-        default:   throw std::runtime_error("CSimulation:SelectIntegrator()  Bad character");
-    }
+	
+	std::string integrator_type = geom->GetIntegratorType(); 
+	
+    if(integrator_type=="ParallelEulerIntegrator") return new CParallelEulerIntegrator(this);
+    if(integrator_type=="ParallelEulerFMAIntegrator") return new CParallelEulerFMAIntegrator(this);
+    if(integrator_type=="IntegratorBuckledSubstrate") return new IntegratorBuckledSubstrate(this);
+    
+    
+
+	std::stringstream oss;
+	oss << "CSimulation:SelectIntegrator()  Bad integrator selected. " << integrator_type;  
+	throw std::runtime_error(oss.str());
+	
 }
 
 

@@ -37,11 +37,10 @@ class GeometryBase
 		virtual double GetYHi() const = 0;
 		virtual double Geta0() const = 0;
 		
-		
 		virtual std::list<CParticle> * GetTriangulatedParticlesList() = 0;
 		virtual std::list<CDelLine> * GetTriangulatedLinesList() = 0;
 		
-		
+		virtual std::string GetIntegratorType() const = 0;
              
 };
 

@@ -19,7 +19,9 @@ namespace thermostats
 
 	// Stochastic thermostat based on H.C Andersen 1980
 	void Andersen(double T_, double kB_, double eta_, double dt_, double tau_, double * tempForce_);
-        					
+    
+	void Andersen3D(double T_, double kB_, double eta_, double dt_, double tau_, double * tempForce_);
+	    					
     //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     //  Handy constants
     //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

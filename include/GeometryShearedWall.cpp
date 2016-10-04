@@ -54,6 +54,9 @@ GeometryShearedWall::GeometryShearedWall(CSimulation * sim_)
     wrapy=false;
     
     topwallvel=0;
+	
+	
+	integratorType="ParallelEulerIntegrator";
     
         
 }

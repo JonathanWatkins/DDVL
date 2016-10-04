@@ -109,6 +109,8 @@ GeometryWedge::GeometryWedge(CSimulation * sim_)
 	wrapx = false;
 	wrapy = false;    
 	
+	integratorType="ParallelEulerIntegrator";
+	
 }
 
 GeometryWedge::~GeometryWedge()

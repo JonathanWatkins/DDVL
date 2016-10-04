@@ -9,7 +9,7 @@ class CParticle
 	
 private:
 	
-	double x,y,lastx, lasty, velx,vely,a,forcex,forcey;
+	double x,y,z,lastx, lasty, lastz, velx,vely, velz, a,forcex,forcey, forcez;
 	int coord_num;
 	bool ghost, Tracked, in_bubble, burgers_circuit_center;
 	int id;
@@ -18,11 +18,13 @@ private:
 
   	double velx_sum;
 	double vely_sum;
+	double velz_sum;
+	
 
 
   
-  double force_dx, force_dy;
-  double force_tx, force_ty;
+  double force_dx, force_dy, force_dz;
+  double force_tx, force_ty, force_tz;
   
   char type;
   
@@ -41,6 +43,8 @@ public:
 	CParticle();
 	
 	CParticle(double x_, double y_, double velx_, double vely_, int coord_num_);
+	
+	CParticle(double x_, double y_, double z_, double velx_, double vely_, double velz_, int coord_num_);
 	
 	/*CParticle(double x_, double y_, 
 		double lastx_, double lasty_,
@@ -67,14 +71,19 @@ public:
 	{
 		x = lhs_.x;
 		y = lhs_.y;
+		z = lhs_.z;
 		lastx = lhs_.lastx;
 		lasty = lhs_.lasty;
+		lastz = lhs_.lastz;
 		velx = lhs_.velx;
 		vely = lhs_.vely;
+		velz = lhs_.velz;
 		coord_num = lhs_.coord_num;
 		a = lhs_.a;
 		forcex = lhs_.forcex;
 		forcey = lhs_.forcey;
+		forcez = lhs_.forcez;
+		
 		ghost = lhs_.ghost;
 		id = lhs_.id;
 		Jxy = lhs_.Jxy;
@@ -84,8 +93,12 @@ public:
 		
 		force_dx=lhs_.force_dx;
 		force_dy=lhs_.force_dy;
+		force_dz=lhs_.force_dz;
+		
 		force_tx=lhs_.force_tx;
 		force_ty=lhs_.force_ty;
+		force_tz=lhs_.force_tz;
+		
 		
 		TrajectoryNumber= lhs_.TrajectoryNumber;
 		Tracked=lhs_.Tracked;
@@ -112,35 +125,51 @@ public:
 	
 	double get_y() const;
 	
+	double get_z() const;
+	
 	double get_midx() const;
 	
 	double get_midy() const;
 	
+	double get_midz() const;
+	
 	double get_velx() const;
 	
 	double get_vely() const;
+	
+	double get_velz() const;
 	
 	int get_coord_num() const;
 	
 	void set_x(double x_);
 	
 	void set_y(double y_);
+	
+	void set_z(double z_);
 		
 	void set_pos(double x_, double y_);
 	
 	void set_lastpos(double lastx_, double lasty_);
+
+	void set_pos(double x_, double y_, double z_);
 	
+	void set_lastpos(double lastx_, double lasty_, double lastz_);
+
 	/*void set_velx(double velx_);
 	
 	void set_vely(double vely_);*/
 	
 	void set_vel(double velx_, double vely_);
+
+	void set_vel(double velx_, double vely_, double velz_);
 	
 	void set_coord_num(int coord_num_);
 	
 	double get_lastx() const;
 	
 	double get_lasty() const;
+	
+	double get_lastz() const;
 		
 	double get_a () const;
 
@@ -172,7 +201,11 @@ public:
 	
 	double get_forcey() const;
 	
+	double get_forcez() const;
+	
 	void set_force(double forcex_, double forcey_);
+	
+	void set_force(double forcex_, double forcey_, double forcez_);
 	
 	void coordPlusOne();
 	
@@ -195,7 +228,9 @@ public:
 	double get_velx_mean();
 
 	double get_vely_mean();
-		
+
+	double get_velz_mean();
+	
 	//void add_trajectoryPoint();
 	
 	//std::vector<double> * get_trajectoryx() const;
@@ -217,7 +252,7 @@ public:
 	
 	bool operator== (const CParticle& lhs_)
 	{
-		return (lhs_.get_x() == x && lhs_.get_y() == y);
+		return (lhs_.get_x() == x && lhs_.get_y() == y && lhs_.get_z() == z);
 				
 	};
 	
@@ -318,9 +353,15 @@ public:
 	
 	double get_force_dy() const { return force_dy;}
 	
+	double get_force_dz() const { return force_dz;}
+	
+	
 	double get_force_tx() const { return force_tx;}
 	
 	double get_force_ty() const { return force_ty;}
+	
+	double get_force_tz() const { return force_tz;}
+	
 	
 	void set_force_d_t( double force_dx_, double force_dy_, double force_tx_, double force_ty_ )
 	{
@@ -329,7 +370,17 @@ public:
 		force_tx = force_tx_;
 		force_ty = force_ty_;
 	}
-	
+		
+	void set_force_d_t( double force_dx_, double force_dy_, double force_dz_, double force_tx_, double force_ty_, double force_tz_)
+	{
+		force_dx = force_dx_;
+		force_dy = force_dy_;
+		force_dz = force_dz_;
+		force_tx = force_tx_;
+		force_ty = force_ty_;
+		force_tz = force_tz_;
+	}
+		
 	
 };
 

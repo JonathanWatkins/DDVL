@@ -52,6 +52,8 @@ class GeometryShearedWall : public GeometryBase
 		
 		std::list<CParticle> * GetTriangulatedParticlesList() {return triangulatedParticlesList; }
 		std::list<CDelLine> * GetTriangulatedLinesList() {return triangulatedLinesList; }
+		
+		std::string GetIntegratorType() const {return integratorType; }
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific functions
@@ -125,6 +127,8 @@ private:
 		
         // temp variables for sheared wall jobs
         double topwallvel;
+		
+		std::string integratorType;
     
 };
 

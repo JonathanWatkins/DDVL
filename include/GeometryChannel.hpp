@@ -50,6 +50,8 @@ class GeometryChannel : public GeometryBase
 		
 		std::list<CParticle> * GetTriangulatedParticlesList() {return triangulatedParticlesList; }
 		std::list<CDelLine> * GetTriangulatedLinesList() {return triangulatedLinesList; }
+		
+		std::string GetIntegratorType() const {return integratorType; }
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific functions
@@ -158,6 +160,8 @@ private:
 		
 		bool wrapx;
 		bool wrapy;
+		
+		std::string integratorType;
 		              
 };
 

@@ -70,6 +70,7 @@ include/FileOutput.cpp
 include/IntegratorBase.cpp
 include/CParallelEulerIntegrator.cpp
 include/CParallelEulerFMAIntegrator.cpp
+include/IntegratorBuckledSubstrate.cpp
 include/GeometryBase.cpp
 include/GeometryChannel.cpp
 include/GeometryTube.cpp
@@ -77,9 +78,11 @@ include/GeometryCustom.cpp
 include/GeometryWedge.cpp
 include/GeometryOscWall.cpp
 include/GeometryShearedWall.cpp
+include/GeometryBuckledSubstrate.cpp
 include/rv_library.cpp
 include/thermostats.cpp
 include/BinnedAccumulator.cpp
+
 
 )
 

@@ -75,6 +75,8 @@ GeometryTube::GeometryTube(CSimulation * sim_)
 	wrapx = false;
 	wrapy = false;    
 	
+	integratorType="ParallelEulerIntegrator";
+	
 }
 
 GeometryTube::~GeometryTube()

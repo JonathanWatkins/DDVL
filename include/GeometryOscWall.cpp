@@ -55,6 +55,8 @@ GeometryOscWall::GeometryOscWall(CSimulation * sim_)
     
     omega=0;
 	Amp=0;
+	
+	integratorType="ParallelEulerIntegrator";
         
 }
 

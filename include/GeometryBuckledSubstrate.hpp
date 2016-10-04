@@ -1,8 +1,8 @@
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  GeometryCustom.h
+//  GeometryBuckledSubstrate.h
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-#ifndef GeometryCustomHPP
-#define GeometryCustomHPP
+#ifndef GeometryBuckledSubstrateHPP
+#define GeometryBuckledSubstrateHPP
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "GeometryBase.hpp"
@@ -13,20 +13,18 @@
 #include "CParticle.hpp"
 #include "CDelLine.hpp"
 
-
 class CSimulation;
 class FileOutput;
-class BinnedAccumulator;
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-//  class GeometryCustom
+//  class GeometryBuckledSubstrate
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-class GeometryCustom : public GeometryBase
+class GeometryBuckledSubstrate : public GeometryBase
 {
     public:
-        GeometryCustom(CSimulation * sim_);
-        ~GeometryCustom();
+        GeometryBuckledSubstrate(CSimulation * sim_);
+        ~GeometryBuckledSubstrate();
         
         
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
@@ -41,7 +39,7 @@ class GeometryCustom : public GeometryBase
 		void AddParticlesForDT(std::list<CParticle> & vorticesList_);  // returns particles to be triangulated
 		std::list<CParticle> * GetIParticles();  // returns particles to be integrated
 		void GetJParticles(std::list<CParticle>& vorticesList_);  // returns particles seen by integrated particles
- 
+		 
 				
 		double GetXLo() const { return xlo; }
 		double GetXHi() const { return xhi; }
@@ -60,38 +58,35 @@ class GeometryCustom : public GeometryBase
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX		
 private:
 		
-		void CheckEscapedVortices();
+		void ReplaceEscapedVortices();
         void InitialiseVortices();
-		void WrapVorticesX(std::list<CParticle>& jList);
-		void WrapVorticesY(std::list<CParticle>& jList);
-		void WrapVorticesXY(std::list<CParticle>& jList);
-		void DoWrapX(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
-		void DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
-		void DoWrapXY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
-		void TestX(std::list<CParticle>::iterator p);
-		void TestY(std::list<CParticle>::iterator p);
-		void KeepParticlesInSimBoxX();
-		void KeepParticlesInSimBoxY();
-		void KeepParticlesInSimBoxXY();
-		void UserUpdates();
+        double GetRemovalSourceX() const;
+		double GetRemovalSinkX() const;
+		void UpdateBathDensities();
+		bool AddParticleToBath(std::string location_);	//		Adds particle to source or sink
+		bool RemoveParticleFromBath(std::string location_); 	//		Removes particle from source or sink
 		
-		void InitialiseFiles();
+		void WrapVorticesY(std::list<CParticle>& jList);
+		void DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList);
+		
 		void LoadBatchFile();
+		double CalcSinkB() const;
+		double CalcSourceB() const;	
+		void InitialiseRandomMobileParticles();
+		void InitialiseCEParticles();
 		void InitialiseParameters();
-		void GetPeriodicity();
+		void InitialiseFiles();
 				 
     	// Analysis functions
+		void CalculateAndOutputAvVel();
 		void OutputFinalParticlePositions();
 		void OutputParticlePositions();
 		void OutputAverages();
-		void OutputParticleCount();
-		void OutputVxofyProfile();
-		void CalculateVxofyProfile();
-		void OutputVxofyEvolveProfile();
+		void CalculateAndOutputNd();
 		
 		
-		// User Defined functions
 		
+				
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 // class specific variables
@@ -104,32 +99,70 @@ private:
         std::list<CParticle> * triangulatedParticlesList;
         std::list<CDelLine> * triangulatedLinesList;
         
+		double bathLength;
+		double bathWidth;
+		double channelLength;
+		double channelWidth;
+		double sourceBfield;
+		double sinkBfield;
 		double Phi;
 		double a0;
 		double b0;
 		double dt;
 		double forcerange;
 		std::string pos_file_name;
+        std::string pins_file_name;
         
+        int sourceDensity;
+		int sinkDensity;
+		int channelDensity;
+        
+        double removesourcex;
+        double removesinkx;
+        
+        double removetopchannely;
+        double removebottomchannely;
+        
+		double etchsourcex, etchsinkx;
+	
+		double etchsourcex0,  
+		etchsourcey0,
+		etchsourcex1, 
+		etchsourcey1;
+	
+		double etchsinkx0, 
+		etchsinky0,
+		etchsinkx1, 
+		etchsinky1;
+	
+		double etchchannelx0,
+		etchchannely0,
+		etchchannelx1,
+		etchchannely1;
+	
+		double removechannelx0,
+		removechannelx1,
+		removesourcey0,
+		removesourcey1;	
+			  
         double binsize;
         
-        bool wrapx;
-        bool wrapy;
-        double delx;
-		double dely;
-	
+        double avXVel;
+        double avYVel;
         
         double xlo,ylo, xhi,yhi;
         
-        FileOutput * fout;
+        int Nd;
+		int Nv;
+		int Nmis;
 		
-		BinnedAccumulator * Vxofy;
+		FileOutput * fout;
 		
-        // temp variables for sheared wall jobs
-        double topwallvel;
+		bool wrapx;
+		bool wrapy;
 		
 		std::string integratorType;
-    
+		              
 };
 
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

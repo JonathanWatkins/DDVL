@@ -13,7 +13,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 
-#include "GeometryChannel.hpp"
+#include "GeometryBuckledSubstrate.hpp"
 #include "CSimulation.hpp"
 #include "CParticle.hpp"
 #include "FileOutput.hpp"
@@ -23,7 +23,7 @@
 //	constructor
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-GeometryChannel::GeometryChannel(CSimulation * sim_)
+GeometryBuckledSubstrate::GeometryBuckledSubstrate(CSimulation * sim_)
 {
 	sim=sim_;
 
@@ -99,10 +99,10 @@ GeometryChannel::GeometryChannel(CSimulation * sim_)
 	wrapx = false;
 	wrapy = false;    
 	
-	integratorType="ParallelEulerIntegrator";
+	integratorType="IntegratorBuckledSubstrate";
 }
 
-GeometryChannel::~GeometryChannel()
+GeometryBuckledSubstrate::~GeometryBuckledSubstrate()
 {
 	delete triangulatedParticlesList;
     delete triangulatedLinesList;
@@ -111,7 +111,7 @@ GeometryChannel::~GeometryChannel()
 	
 }
 
-void GeometryChannel::LoadBatchFile()
+void GeometryBuckledSubstrate::LoadBatchFile()
 {
 	std::cout << "Loading job batch file..." << std::endl;
 	
@@ -158,7 +158,7 @@ void GeometryChannel::LoadBatchFile()
 	
 }
 
-void GeometryChannel::InitialiseGeometry()
+void GeometryBuckledSubstrate::InitialiseGeometry()
 {
 	InitialiseFiles();
 	LoadBatchFile();
@@ -166,7 +166,7 @@ void GeometryChannel::InitialiseGeometry()
 	InitialiseVortices();
 }
 
-void GeometryChannel::InitialiseParameters()
+void GeometryBuckledSubstrate::InitialiseParameters()
 {
 	
 	// calculate system parameters
@@ -229,11 +229,11 @@ void GeometryChannel::InitialiseParameters()
 			  << std::endl;
 			   
 	 
-	std::cout << "Channel geometry selected." << std::endl;
+	std::cout << "Buckled substrate geometry selected." << std::endl;
 	
 }
 
-void GeometryChannel::InitialiseVortices()
+void GeometryBuckledSubstrate::InitialiseVortices()
 {
 
 	std::cout << "Initialising Vortices..." << std::endl;
@@ -279,7 +279,7 @@ void GeometryChannel::InitialiseVortices()
 				<< " and " << OtherParticlesList->size() << " other votices." << std::endl << std::endl;
 }
         
-void GeometryChannel::InitialiseRandomMobileParticles()
+void GeometryBuckledSubstrate::InitialiseRandomMobileParticles()
 {         
 		std::cout << "   " << "no start data" << std::endl;
 		
@@ -319,7 +319,7 @@ void GeometryChannel::InitialiseRandomMobileParticles()
 		}	         
 }         
              
-void GeometryChannel::ReplaceEscapedVortices()
+void GeometryBuckledSubstrate::ReplaceEscapedVortices()
 {
 	// replaces particles that escape the source and wraps particles in y direction along the channel
  	for (std::list<CParticle>::iterator p = AParticlesList->begin();
@@ -360,7 +360,7 @@ void GeometryChannel::ReplaceEscapedVortices()
 	
 }
 
-void GeometryChannel::InitialiseCEParticles()
+void GeometryBuckledSubstrate::InitialiseCEParticles()
 {
 	double locala0=a0;
 	double localb0=b0;
@@ -438,7 +438,7 @@ void GeometryChannel::InitialiseCEParticles()
 	
 }
 
-void GeometryChannel::AddParticlesForDT(std::list<CParticle> & iList)
+void GeometryBuckledSubstrate::AddParticlesForDT(std::list<CParticle> & iList)
 {
 	// Add A particles
 	iList.clear();
@@ -454,17 +454,17 @@ void GeometryChannel::AddParticlesForDT(std::list<CParticle> & iList)
 		
 }
 
-double GeometryChannel::GetRemovalSourceX() const
+double GeometryBuckledSubstrate::GetRemovalSourceX() const
 {
 	return 5*a0;
 } 
 
-double GeometryChannel::GetRemovalSinkX() const
+double GeometryBuckledSubstrate::GetRemovalSinkX() const
 {
 	return 2*bathLength+channelLength - 5*a0;
 } 
 
-void GeometryChannel::UpdateBathDensities()
+void GeometryBuckledSubstrate::UpdateBathDensities()
 {
 	int t = sim->get_t();
 	
@@ -525,7 +525,7 @@ void GeometryChannel::UpdateBathDensities()
 	
 }
 
-bool GeometryChannel::AddParticleToBath(std::string location_)
+bool GeometryBuckledSubstrate::AddParticleToBath(std::string location_)
 {
 		int t = sim->get_t();
 	
@@ -576,7 +576,7 @@ bool GeometryChannel::AddParticleToBath(std::string location_)
 		return true;
 }
 
-bool GeometryChannel::RemoveParticleFromBath(std::string location_)
+bool GeometryBuckledSubstrate::RemoveParticleFromBath(std::string location_)
 {
 		int t = sim->get_t();
 		
@@ -676,7 +676,7 @@ bool GeometryChannel::RemoveParticleFromBath(std::string location_)
 		
 }
 
-double GeometryChannel::CalcSinkB() const
+double GeometryBuckledSubstrate::CalcSinkB() const
 {
 	
 	/*double aaverage=0;
@@ -726,13 +726,13 @@ double GeometryChannel::CalcSinkB() const
 	
 }
 
-double GeometryChannel::CalcSourceB() const
+double GeometryBuckledSubstrate::CalcSourceB() const
 {
 	
 	/*double aaverage=0;
 	int numa=0;
 	
-	//if (triangulatedLinesList->size() == 0) throw std::runtime_error("GeometryChannel::CalcSourceB() No triangulated particles");
+	//if (triangulatedLinesList->size() == 0) throw std::runtime_error("GeometryBuckledSubstrate::CalcSourceB() No triangulated particles");
 	for (std::list<CDelLine>::iterator p = triangulatedLinesList->begin();
 				p!=triangulatedLinesList->end(); ++p)
 	{
@@ -781,13 +781,13 @@ double GeometryChannel::CalcSourceB() const
 	
 }
 
-void GeometryChannel::PerStepAnalysis()
+void GeometryBuckledSubstrate::PerStepAnalysis()
 {
 	  OutputParticlePositions(); 
 	  CalculateAndOutputAvVel();
 }
 
-void GeometryChannel::EndofSimAnalysis()
+void GeometryBuckledSubstrate::EndofSimAnalysis()
 {
 	OutputFinalParticlePositions();
 	OutputAverages();
@@ -796,14 +796,14 @@ void GeometryChannel::EndofSimAnalysis()
 	
 }
 
-void GeometryChannel::PerStepUpdates()
+void GeometryBuckledSubstrate::PerStepUpdates()
 {
 	UpdateBathDensities();
 	ReplaceEscapedVortices();	
 	
 }
 
-void GeometryChannel::CalculateAndOutputAvVel()
+void GeometryBuckledSubstrate::CalculateAndOutputAvVel()
 {
 	/*
 	 *   calculates the space and time average of the x and y velocities of the channel vortices.
@@ -848,7 +848,7 @@ void GeometryChannel::CalculateAndOutputAvVel()
 }
 
 
-void GeometryChannel::OutputFinalParticlePositions()
+void GeometryBuckledSubstrate::OutputFinalParticlePositions()
 {
 	
 	int t = sim->get_t();
@@ -861,7 +861,7 @@ void GeometryChannel::OutputFinalParticlePositions()
 	for(std::list<CParticle>::iterator p = AParticlesList->begin();
 		p != AParticlesList->end(); ++p)
 	{
-		oss << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y() << " " << p->get_z();
 		
 		if ( std::distance(p,AParticlesList->end()) != 1 )
 		{
@@ -874,7 +874,7 @@ void GeometryChannel::OutputFinalParticlePositions()
 	for(std::list<CParticle>::iterator p = OtherParticlesList->begin();
 		p != OtherParticlesList->end(); ++p)
 	{
-		oss << p->get_type() << " " << p->get_x() << " " << p->get_y();
+		oss << p->get_type() << " " << p->get_x() << " " << p->get_y() << " " << p->get_z();
 		
 		if ( std::distance(p,OtherParticlesList->end()) != 1 )
 		{
@@ -888,7 +888,7 @@ void GeometryChannel::OutputFinalParticlePositions()
 	
 }
 
-void GeometryChannel::OutputParticlePositions()
+void GeometryBuckledSubstrate::OutputParticlePositions()
 {
 	std::stringstream oss;
 	
@@ -925,8 +925,12 @@ void GeometryChannel::OutputParticlePositions()
 						 << p->get_ghost() << ", "
 						 << p->get_x() << ", " 
 						 << p->get_y() << ", " 
+						 << p->get_z() << ", " 
+							 
 						 << p->get_velx() << ", "
 						 << p->get_vely() << ", "
+					     << p->get_velz() << ", "
+							 
 						 << p->get_coord_num()
 						 << "}";											
 
@@ -972,10 +976,10 @@ void GeometryChannel::OutputParticlePositions()
 	fout->RegisterOutput("guifile",oss2.str()); 
 }
 
-void GeometryChannel::OutputAverages()
+void GeometryBuckledSubstrate::OutputAverages()
 {	
 	int t = sim->get_t();
-	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("GeometryChannel::OutputAverages() Averages must be output at the end of the simulation.");
+	if (sim->get_simulation_time()+1!=t) throw std::runtime_error("GeometryBuckledSubstrate::OutputAverages() Averages must be output at the end of the simulation.");
 		
 	std::stringstream oss;	
 	oss << "Time and space averaged quantities" << std::endl
@@ -990,7 +994,7 @@ void GeometryChannel::OutputAverages()
 	
 }
 
-void GeometryChannel::CalculateAndOutputNd()
+void GeometryBuckledSubstrate::CalculateAndOutputNd()
 {
 	if (sim->get_t()%sim->get_triangulationInterval()!=0)
 		return;
@@ -1021,12 +1025,12 @@ void GeometryChannel::CalculateAndOutputNd()
 	fout->RegisterOutput("Nd", oss.str());
 }
 
-std::list<CParticle> * GeometryChannel::GetIParticles()
+std::list<CParticle> * GeometryBuckledSubstrate::GetIParticles()
 {
 	return AParticlesList;
 }
 
-void GeometryChannel::GetJParticles(std::list<CParticle> & jList)
+void GeometryBuckledSubstrate::GetJParticles(std::list<CParticle> & jList)
 {
 	// Add A particles
 	jList.clear();
@@ -1043,7 +1047,7 @@ void GeometryChannel::GetJParticles(std::list<CParticle> & jList)
 
 }
  
-void GeometryChannel::InitialiseFiles()
+void GeometryBuckledSubstrate::InitialiseFiles()
 {
 	// add files to outputter
 		
@@ -1055,7 +1059,7 @@ void GeometryChannel::InitialiseFiles()
  
  }
  
-void GeometryChannel::WrapVorticesY(std::list<CParticle>& jList)
+void GeometryBuckledSubstrate::WrapVorticesY(std::list<CParticle>& jList)
 {
 		
 	// Add periodic y particles	
@@ -1077,7 +1081,7 @@ void GeometryChannel::WrapVorticesY(std::list<CParticle>& jList)
 
 
 
-void GeometryChannel::DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
+void GeometryBuckledSubstrate::DoWrapY(std::list<CParticle>::iterator p, std::list<CParticle>& jList)
 {
 	
 	double wrapsize = forcerange;
